@@ -1,0 +1,200 @@
+import java.util.Arrays;
+
+public class Tester {
+	
+	public static void main(String[] args)
+	{
+		BTreeImplementation<String, String> bte = new BTreeImplementation<String , String>(6, "a", "a");
+		Entry <String, String> Entry1 = new Entry<String, String>("one", "-");
+		Entry <String, String> Entry2 = new Entry<String, String>("thre", "---");
+		Entry <String, String> Entry3 = new Entry<String, String>("four", "----");
+		Entry <String, String> Entry4 = new Entry<String, String>("two", "--");
+		Entry <String, String> Entry5 = new Entry<String, String>("five", "-----");
+		Entry <String, String> Entry6 = new Entry<String, String>("six", "------");
+		Entry <String, String> Entry7 = new Entry<String, String>("eee", "eeee");
+		Entry <String, String> Entry8 = new Entry<String, String>("fff", "ffff");
+		Entry <String, String> Entry9 = new Entry<String, String>("ssss", "sssss");
+		Entry <String, String> Entry10 = new Entry<String, String>("gggg", "gggg");
+		Entry <String, String> Entry11 = new Entry<String, String>("iiii", "iiii");
+		Entry <String, String> Entry12 = new Entry<String, String>("hhhh", "hhhh");
+		Entry <String, String> Entry13 = new Entry<String, String>("jjjj", "jjjj");
+		Entry <String, String> Entry14 = new Entry<String, String>("zzzz", "zz1zz");
+		Entry <String, String> Entry15 = new Entry<String, String>("swzzzz", "zzzz");
+		Entry <String, String> Entry16 = new Entry<String, String>("swwzzzz", "zzzz");
+		Entry <String, String> Entry17 = new Entry<String, String>("szzzz", "zzzz");
+		Entry <String, String> Entry18 = new Entry<String, String>("zzzzz", "zzzz");
+
+		
+		
+		
+		bte.add(Entry1);
+		bte.add(Entry2);
+		bte.add(Entry3);
+		bte.add(Entry4);
+		bte.add(Entry5);
+		bte.add(Entry6);
+		bte.add(Entry7);
+		bte.add(Entry8);
+		bte.add(Entry9);
+		bte.add(Entry10);
+		bte.add(Entry11);
+		bte.add(Entry12);
+		bte.add(Entry13);
+		bte.add(Entry14);
+		bte.add(Entry15);
+		bte.add(Entry16);
+		bte.add(Entry17);
+		bte.add(Entry18);
+		
+		bte.delete("six");
+		
+		String[] keysroot = new String[6];
+		String[] valuesroot = new String[6];
+		String[] keys1 = new String[6];
+		String[] values1 = new String[6];
+		String[] keys2 = new String[6];
+		String[] values2 = new String[6];
+		String[] keys11 = new String[6];
+		String[] values11 = new String[6];
+		String[] keys12 = new String[6];
+		String[] values12 = new String[6];
+		String[] keys13 = new String[6];
+		String[] values13 = new String[6];
+		String[] keys21 = new String[6];
+		String[] values21 = new String[6];
+		String[] keys22 = new String[6];
+		String[] values22 = new String[6];
+		String[] keys23 = new String[6];
+		String[] values23 = new String[6];
+		
+		for(int i = 0; i < 2; i++)
+		{
+			keysroot[i] = (String) bte.root.getNode()[i].getKey();
+			//valuesroot[i] = (String) bte.root.getNode()[i].getValue();	
+		}
+		Node<String, Node<String, String>> node1 = (Node<String, Node<String, String>>) bte.root.getNode()[0].getValue();
+		Node<String, Node<String, String>> node2 = (Node<String, Node<String, String>>) bte.root.getNode()[1].getValue();
+		
+		
+		Node<String, String> node11 = (Node<String, String>) node1.getNode()[0].getValue();
+		Node<String, String> node12 = (Node<String, String>) node1.getNode()[1].getValue();
+		Node<String, String> node13 = (Node<String, String>) node1.getNode()[2].getValue();
+		
+		Node<String, String> node21 = (Node<String, String>) node2.getNode()[0].getValue();
+		Node<String, String> node22 = (Node<String, String>) node2.getNode()[1].getValue();
+		Node<String, String> node23 = (Node<String, String>) node2.getNode()[2].getValue();
+		
+		for(int i = 0; i < 3; i++)
+		{
+			keys1[i] = node1.getNode()[i].getKey();
+			keys2[i] = node2.getNode()[i].getKey();
+		}
+		
+		for(int i = 0; i < 3; i++)
+		{
+			keys11[i] = node11.getNode()[i].getKey();
+			values11[i] = node11.getNode()[i].getValue();
+			
+			keys12[i] = node12.getNode()[i].getKey();
+			values12[i] = node12.getNode()[i].getValue();
+			
+			keys13[i] = node13.getNode()[i].getKey();
+			values13[i] = node13.getNode()[i].getValue();
+			
+			keys21[i] = node21.getNode()[i].getKey();
+			values21[i] = node21.getNode()[i].getValue();
+			
+			keys22[i] = node22.getNode()[i].getKey();
+			values22[i] = node22.getNode()[i].getValue();
+		}
+		for(int i = 0; i < 4; i++)
+		{
+			keys23[i] = node23.getNode()[i].getKey();
+			values23[i] = node23.getNode()[i].getValue();
+		}
+		System.out.println(Arrays.toString(keysroot));
+		System.out.println(Arrays.toString(valuesroot));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys1));
+		System.out.println(Arrays.toString(values1));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys2));
+		System.out.println(Arrays.toString(values2));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys11));
+		System.out.println(Arrays.toString(values11));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys12));
+		System.out.println(Arrays.toString(values12));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys13));
+		System.out.println(Arrays.toString(values13));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys21));
+		System.out.println(Arrays.toString(values21));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys22));
+		System.out.println(Arrays.toString(values22));
+		System.out.println("--------------------");
+		System.out.println(Arrays.toString(keys23));
+		System.out.println(Arrays.toString(values23));
+		System.out.println("--------------------");
+		
+		System.out.println(bte.search("six"));
+		
+		
+		
+		
+		/*
+		Node <String, String> node1 = (Node<String, String>) bte.root.getNode()[0].getValue();
+		Node <String, String> node2 = (Node<String, String>) bte.root.getNode()[1].getValue();
+		Node <String, String> node3 = (Node<String, String>) bte.root.getNode()[2].getValue(); 
+		Node <String, String> node4 = (Node<String, String>) bte.root.getNode()[3].getValue(); 
+		Node <String, String> node5 = (Node<String, String>) bte.root.getNode()[4].getValue(); 
+		
+		for(int i = 0; i < 3; i++)
+		{
+			keys2[i] = node1.getNode()[i].getKey();
+			values2[i] = node1.getNode()[i].getValue();
+		}
+		for(int i = 0; i < 3; i++){
+			keys4[i] = node2.getNode()[i].getKey();
+			values4[i] = node2.getNode()[i].getValue();
+		}
+		for(int i = 0; i < 3; i++){
+			keys5[i] = node3.getNode()[i].getKey();
+			values5[i] = node3.getNode()[i].getValue();
+		}
+		
+		for(int i = 0; i < 5; i++){
+			keys3[i] = node4.getNode()[i].getKey();
+			values3[i] = node4.getNode()[i].getValue();
+		}
+		
+		for(int i = 0; i < 3; i++){
+			keys6[i] = node5.getNode()[i].getKey();
+			values6[i] = node5.getNode()[i].getValue();
+		}
+		
+		
+		System.out.println(Arrays.toString(keys1));
+		System.out.println(Arrays.toString(values1));
+		System.out.println("____________________");
+		System.out.println(Arrays.toString(keys2));
+		System.out.println(Arrays.toString(values2));
+		System.out.println("____________________");
+		System.out.println(Arrays.toString(keys4));
+		System.out.println(Arrays.toString(values4));
+		System.out.println("____________________");
+		System.out.println(Arrays.toString(keys5));
+		System.out.println(Arrays.toString(values5));
+		System.out.println("____________________");
+		System.out.println(Arrays.toString(keys3));
+		System.out.println(Arrays.toString(values3));
+		System.out.println("____________________");
+		System.out.println(Arrays.toString(keys6));
+		System.out.println(Arrays.toString(values6));
+		System.out.println("____________________");
+	    **/
+	}
+}

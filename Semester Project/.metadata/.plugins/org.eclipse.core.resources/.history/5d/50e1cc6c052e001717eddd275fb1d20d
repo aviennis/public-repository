@@ -1,0 +1,13 @@
+import java.util.List;
+
+public class Table {
+	
+	private List<DBEntry> rows;
+	private int amountOfColumns;
+	
+	public Table(int columns)
+	{
+		rows = new List<DBEntry>();
+		
+	}
+}

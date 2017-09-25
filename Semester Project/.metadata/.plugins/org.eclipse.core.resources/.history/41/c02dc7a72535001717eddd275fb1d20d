@@ -1,0 +1,33 @@
+import java.util.ArrayList;
+
+public class Entry<K, V> {
+	
+	private K key = null;
+	private ArrayList<V> value = null;
+	
+	public Entry(K key, V value)
+	{
+		this.key = key;
+		this.value.add(value);
+	}
+	
+	public K getKey()
+	{
+		return key;
+	}
+	
+	public ArrayList<V> getValue()
+	{
+		return value;
+	}
+}
+	/*
+	public V deleteValue(V valToDelete)
+	{
+			
+		V oldValue = value;
+		value = null;
+		return oldValue;
+	}
+}
+*/

@@ -1,0 +1,12 @@
+
+public class Column <T> {
+	
+	private T t;
+	
+	public Column(T t)
+	{
+		this.t = t;
+	}
+	
+	
+}

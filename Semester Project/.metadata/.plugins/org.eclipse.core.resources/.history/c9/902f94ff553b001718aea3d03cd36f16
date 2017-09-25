@@ -1,0 +1,32 @@
+import java.util.ArrayList;
+
+public class hi {
+
+	public static void main(String[] args)
+	{
+		ArrayList<String> a1 = new ArrayList<String>();
+		ArrayList<String> a2 = new ArrayList<String>();
+		
+		a1.add("a");
+		a1.add("z");
+		a1.add("b");
+		
+		a2.add("y");
+		a2.add("c");
+		a2.add("x");
+		
+		System.out.println(a1.get(0));
+		System.out.println(a1.get(1));
+		System.out.println(a1.get(2));
+		
+		System.out.println(a2.get(0));
+		System.out.println(a2.get(1));
+		System.out.println(a2.get(2));
+		
+		a1.addAll(a2);
+		for(int i = 0; i < 6; i++)
+		{
+			System.out.println(a1.get(i));
+		}
+	}
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="java.util.Iterator"/>
+<fullyQualifiedTypeName name="java.lang.System"/>
+<fullyQualifiedTypeName name="java.io.IOException"/>
+<fullyQualifiedTypeName name="java.util.ArrayList"/>
+<fullyQualifiedTypeName name="edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.SelectQuery.FunctionInstance"/>
+<fullyQualifiedTypeName name="java.util.Map"/>
+<fullyQualifiedTypeName name="edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.SelectQuery.FunctionName"/>
+<fullyQualifiedTypeName name="edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnID"/>
+<fullyQualifiedTypeName name="DBBox"/>
+</qualifiedTypeNameHistroy>

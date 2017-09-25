@@ -1,0 +1,248 @@
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnDescription.DataType;
+
+public class BTreeImplementation<K extends Comparable <K>, V> {
+
+	private String name;
+	private int nodeSize;
+	private K SENTINAL_KEY;
+	Node root;
+	
+	public BTreeImplementation (int nodeSize, String name, DataType type)
+	{
+		this.name = name;
+		this.nodeSize = nodeSize;
+		root = new Node(nodeSize, 0, null, null);
+		Entry<K, V> SENTINAL_ENTRY = new Entry<K, V> (SENTINAL_KEY, null);
+		add(SENTINAL_ENTRY);
+	}
+	
+	public V search(K key)
+	{
+		return (V) this.search(key, root);
+	}
+	
+	public String getName()
+	{
+		return name;
+	}
+	
+	private V search(K key, Node<K, V> node)
+	{
+		if(node.getHeight() == 0)//if the node is external
+		{
+			for(int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				Entry<K, V> entryInQuestion = node.getNode()[i];
+				K keyInQuestion = entryInQuestion.getKey();
+				if(keyInQuestion.equals(key)){
+				return entryInQuestion.getValue();
+				}
+			}
+			return null;
+		}
+		else //we need to do a recursive call to get to the proper external node
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				
+				if(i + 1 == node.getAmountOfEntries()) 
+				{
+					return this.search (key, (Node<K, V>) node.getNode()[i].getValue());
+				}
+				else if(((Comparable<K>) key).compareTo(keyInQuestion) < 0)
+				{
+					return this.search (key, (Node<K, V>) node.getNode()[i - 1].getValue());
+				}
+
+			}
+		}
+		return null;
+
+	}
+	
+	public Node add(Entry<K, V> entry)
+	{
+		return this.add(entry, root);
+	}
+	
+	public Node add(Entry<K, V> entry, Node<K, V> node)
+	{
+		if (node.getHeight() == 0)//if we are at a leaf
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if(entry.getKey().compareTo(keyInQuestion) < 0)//the key we're adding belongs at this place
+				{
+					//move the necesary peices over
+					for(int j = node.getAmountOfEntries() - 1; j > i - 1; j--)
+					{	
+						node.getNode()[j + 1] = node.getNode()[j];	
+					}
+					//add the entry and increment the node's entries field
+					node.getNode()[i] = entry;
+					node.incrementEntries();
+					//if the node is full, we need to split
+					if (node.getAmountOfEntries() == nodeSize)
+					{
+						return split(node);
+					}
+					else
+					{
+						return null;
+					}
+				}
+			}
+			node.incrementEntries();
+			node.getNode()[node.getAmountOfEntries() - 1] = entry;
+			if(node.getAmountOfEntries() == nodeSize)
+			{
+				return split(node);
+			}
+		}
+		else 
+		{
+			//find the correct key
+			int lkdjflsjdf = node.getAmountOfEntries();
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if (entry.getKey().compareTo(keyInQuestion) < 0)
+				{
+					Node<K, V> nextNode = (Node <K, V>) node.getNode()[i - 1].getValue();
+					return add(entry, nextNode);
+				}
+				else if(i == (node.getAmountOfEntries() - 1))
+				{
+					Node<K, V> nextNode = (Node <K, V>) node.getNode()[i].getValue();
+					return add(entry, nextNode);
+				}
+			}
+
+		}
+		return null;
+	}
+	
+	private Node split(Node nodeToSplit)
+	{
+
+		//make the new node
+		Node newNode = new Node<K, V>(nodeSize, nodeToSplit.getHeight(), null, null);
+		//transfer the second half of the entries
+		for(int i = nodeSize/2; i < nodeSize; i++)
+		{
+			newNode.getNode()[i - nodeSize/2] = nodeToSplit.getNode()[i];
+			nodeToSplit.getNode()[i] = null;
+		}
+		//get the correct parent node or create a new one if need be
+		if(nodeToSplit.getParentNode() == null)//the node is the root itself
+		{
+			int newHeight = nodeToSplit.getHeight();
+			newHeight++;
+			Node <K, Node <K, V>> parentNode = new Node<K , Node<K, V>>(nodeSize, newHeight, null, null);
+			//create new entries
+			Entry <K, Node<K, V>> newEntryOne = new Entry<K, Node<K, V>> ((K) nodeToSplit.getNode()[0].getKey(), nodeToSplit);
+			Entry <K, Node<K, V>> newEntryTwo = new Entry<K, Node<K, V>> ((K) newNode.getNode()[0].getKey(), newNode);
+			
+			parentNode.getNode()[0] = newEntryOne;
+			parentNode.getNode()[1] = newEntryTwo;
+			
+			nodeToSplit.setParentEntry(newEntryOne);
+			newNode.setParentEntry(newEntryTwo);
+			nodeToSplit.setParentNode(parentNode);
+			newNode.setParentNode(parentNode);
+			
+			//set amount of entries
+			nodeToSplit.setAmountOfEntires(3);
+			newNode.setAmountOfEntires(3);
+			parentNode.setAmountOfEntires(2);
+			//set up the correct node-parent heirarchy for the new node
+			if (nodeToSplit.getHeight() != 0)
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					Node <K, V> newNodeChild = (Node<K, V>) newNode.getNode()[i].getValue();
+					newNodeChild.setParentNode(newNode);
+				}
+			}
+			root = parentNode;
+		}
+		else
+		{
+			Node <K, Node<K, V>> parentNode = nodeToSplit.getParentNode();
+			//create the one new entry we need
+			Entry <K, Node<K, V>> newEntry = new Entry<K, Node<K, V>> ((K) newNode.getNode()[0].getKey(), newNode);
+			//place it in the correct place
+			for(int i = 0; i < parentNode.getAmountOfEntries() + 1; i++)
+			{
+				if(i == parentNode.getAmountOfEntries() || newEntry.getKey().compareTo(parentNode.getNode()[i].getKey()) < 0)
+				{
+					//move the necesary peices over
+					for(int j = parentNode.getAmountOfEntries() - 1; j > i - 1; j--)
+					{	
+						parentNode.getNode()[j + 1] = parentNode.getNode()[j];	
+					}
+					parentNode.getNode()[i] = newEntry;
+					parentNode.incrementEntries();
+					break;
+				}
+			}
+			//set amount of entries
+			nodeToSplit.setAmountOfEntires(3);
+			newNode.setAmountOfEntires(3);
+			newNode.setParentNode(parentNode);
+			//set up the correct node-parent heirarchy for the new node
+			if(nodeToSplit.getHeight() != 0)
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					Node <K, V> newNodeChild = (Node<K, V>) newNode.getNode()[i].getValue();
+					newNodeChild.setParentNode(newNode);
+				}
+			}
+			if(parentNode.getAmountOfEntries() == nodeSize)
+			{
+				return split(parentNode);
+			}
+		}
+		return newNode;		
+	}
+	
+	public V delete(K key)
+	{
+		return delete(key, root);
+	}
+	
+	private V delete(K key, Node node)
+	{
+		if(node.getHeight() == 0)
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++){
+				Entry<K, V> entryInQuestion = node.getNode()[i];
+				K keyInQuestion = entryInQuestion.getKey();
+				if(keyInQuestion.equals(key))
+				{
+					return (V) node.getNode()[i].deleteValue();
+				}
+			}
+		}
+		else
+		{
+			for(int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if(i + 1 == node.getAmountOfEntries())
+				{
+					return delete(key, (Node) node.getNode()[i].getValue());
+				}
+				else if(key.compareTo(keyInQuestion) < 0)
+				{
+					return delete (key, (Node) node.getNode()[i - 1].getValue());
+				}
+
+			}
+		}
+		return null;
+	}
+}

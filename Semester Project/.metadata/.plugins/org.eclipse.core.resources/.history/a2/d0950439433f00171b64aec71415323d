@@ -1,0 +1,27 @@
+import java.util.HashSet;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnValuePair;
+
+public class DBEntry {
+	
+	private DBBox[] Entry;
+	
+	
+	public DBEntry(int size)
+	{
+		Entry = new DBBox[size];
+	
+
+	}
+	
+	public int getSize()
+	{
+		return Entry.length;
+	}
+	
+	public DBBox[] getEntry()
+	{
+		return Entry;
+	}
+
+}

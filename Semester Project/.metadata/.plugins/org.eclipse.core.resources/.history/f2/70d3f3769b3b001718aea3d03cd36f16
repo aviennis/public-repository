@@ -1,0 +1,203 @@
+import java.io.IOException;
+import java.util.ArrayList;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class ExtraCreditTest {
+
+	public static void main(String[] args) throws JSQLParserException, IOException
+	{
+		//NOTE: I didn't actually include every single column in every table that 
+		//we discussed we should in class. I did the ones that are relevant/realistic
+		//to implement in the EC part of the project, and left out some of the more very
+		//detailed ones that would be implemented if we were doing this entire EBay project.
+		DatabaseManager dm = new DatabaseManager();
+		
+		String tableOne = "CREATE TABLE users_table"
+				+ "("
+				+ "Type varchar(255) DEFAULT 'Buyer',"
+				+ "ID int,"
+				+ "Email varchar(255) UNIQUE,"
+				+ "Username varchar(255) UNIQUE NOT NULL,"
+				+ "Password varchar(255) NOT NULL,"
+				+ "Name varchar(255),"
+				+ "Address varchar(255) NOT NULL,"
+				+ "PRIMARY KEY(ID)"
+				+ ");";
+		
+		String tableTwo = "CREATE TABLE items_table"
+				+ "("
+				+ "SellerID int NOT NULL,"
+				+ "ItemID int,"
+				+ "StartingPrice decimal (2, 2) DEFAULT 00.01,"
+				+ "ItemName varchar (255) NOT NULL,"
+				+ "ItemDescription varchar (255) NOT NULL,"
+				+ "HighestBidID int,"
+				+ "IsSold boolean DEFAULT false,"
+				+ "PRIMARY KEY(ItemID)"
+				+ ");";
+		
+		String tableThree = "CREATE TABLE transaction_table"
+				+ "("
+				+ "BuyerID int NOT NULL,"
+				+ "SellerID int NOT NULL,"
+				+ "ItemID int NOT NULL,"
+				+ "DateSold varchar (255),"
+				+ "ShippingInfo varchar (255),"
+				+ "TransactionID int,"
+				+ "PRIMARY KEY(TransactionID)"
+				+ ");";
+		
+		String tableFour = "CREATE TABLE bids_table"
+				+ "("
+				+ "ItemID int NOT NULL,"
+				+ "BidValue decimal (2, 2) NOT NULL,"
+				+ "BidderID int NOT NULL,"
+				+ "TimeStamp varchar (255),"
+				+ "HighestBid boolean DEFAULT false,"
+				+ "BidID int,"
+				+ "PRIMARY KEY(BidID)"
+				+ ");";
+		
+		ResultSet createTableOne = dm.execute(tableOne);
+		ResultSet createTableTwo = dm.execute(tableTwo);
+		ResultSet createTableThree = dm.execute(tableThree);
+		ResultSet createTableFour = dm.execute(tableFour);
+		//check to make sure the tables were properly created
+		//System.out.println(createTableTwo.getTableList().get(0).getEntry()[1].getValue().toString() + "0");
+		
+		for(Table t : dm.tables)
+		{
+			printColumnInfo(t);
+			System.out.println("Done with " + t.getName());
+		}
+		
+		//now lets add some sellers
+		String insertSellerOne = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Seller', 111111, 'Seller1@gmail.com', 'Seller1', 'FirstSeller', 'Joe Shmo', '100 Seller St.');";
+		String insertBuyerOne = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Buyer', 222222, 'Buyer1@gmail.com', 'Buyer1', 'FirstBuyer', 'John Smith', '100 Buyer St.');";
+		String insertBuyerTwo = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Buyer', 333333, 'Buyer2@gmail.com', 'Buyer2', 'SecondBuyer', 'Ploni Almoni', '200 Buyer Ave.');";
+		String insertBuyerThree = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Buyer', 444444, 'Buyer3@gmail.com', 'Buyer3', 'ThirdBuyer', 'John Doe', '300 Buyer Blvd.');";
+		
+		ResultSet insertSellerOneSet = dm.execute(insertSellerOne);
+		ResultSet insertBuyerOneSet = dm.execute(insertBuyerOne);
+		ResultSet insertBuyerTwoSet = dm.execute(insertBuyerTwo);
+		ResultSet insertBuyerThreeSet = dm.execute(insertBuyerThree);
+
+		//now lets add some items
+		String insertItemOne = "INSERT INTO items_table (SellerID, ItemID, StartingPrice, ItemName, ItemDescription)"
+				+ "VALUES (111111, 555555, 10.00, 'Football', 'American Football');";
+		String insertItemTwo = "INSERT INTO items_table (SellerID, ItemID, StartingPrice, ItemName, ItemDescription)"
+				+ "VALUES (111111, 666666, 20.00, 'Basketball', 'Round Basketball');";
+		String insertItemThree = "INSERT INTO items_table (SellerID, ItemID, StartingPrice, ItemName, ItemDescription)"
+				+ "VALUES (111111, 777777, 30.00, 'Baseball', 'Bouncy Basketball');";
+		
+		ResultSet insertItemSetOne = dm.execute(insertItemOne);
+		ResultSet insertItemSetTwo = dm.execute(insertItemTwo);
+		ResultSet insertItemSetThree = dm.execute(insertItemThree);
+		
+		
+		//Check that the sellers, buyers, and items were correctly inserted:
+		for(Table t : dm.tables)
+		{
+			System.out.println("");
+			System.out.println("Starting " + t.getName());
+			printRows(t);
+			System.out.println("Done with " + t.getName());
+		}
+		
+		//Bidding War for the football!
+		//need to do each bid before the next isHighestBid method can be accurate, so we'll do them one at a time instead of in a chunk.
+		//in the end, the third bid will be the highest bid. 
+		String bidOne = "INSERT INTO bids_table (ItemID, BidValue, BidderID, HighestBid, BidID) VALUES"
+				+ "(555555, 15.00, 222222, " + isHighestBid(555555, 15.00, dm) + ", 888888);"; 
+		ResultSet bidOneSet = dm.execute(bidOne);
+		
+		String bidTwo = "INSERT INTO bids_table (ItemID, BidValue, BidderID, HighestBid, BidID) VALUES"
+				+ "(555555, 25.00, 333333, " + isHighestBid(555555, 25.00, dm) + ", 999999);";
+		ResultSet bidTwoSet = dm.execute(bidTwo);
+		
+		String bidThree = "INSERT INTO bids_table (ItemID, BidValue, BidderID, HighestBid, BidID) VALUES"
+				+ "(555555, 35.00, 444444, " + isHighestBid(555555, 35.00, dm) + ", 123456);";
+		ResultSet bidThreeSet = dm.execute(bidThree);
+		
+		String bidFour = "INSERT INTO bids_table (ItemID, BidValue, BidderID, HighestBid, BidID) VALUES"
+				+ "(555555, 30.00, 333333, " + isHighestBid(555555, 30.00, dm) + ", 654321);";
+		ResultSet bidFourSet = dm.execute(bidFour);
+		
+		//Check that the sellers, buyers, and items were correctly inserted:
+		for(Table t : dm.tables)
+		{
+			System.out.println("");
+			System.out.println("Starting " + t.getName());
+			printRows(t);
+			System.out.println("Done with " + t.getName());
+		}
+				
+	}
+	
+	/**
+	 * determine if a new bid is the highest bid for that item. If it is, change the HighestBid column to false for the previous highest bid.
+	 * @param itemID the item
+	 * @param bidValue the value
+	 * @param dm the database manager
+	 * @return t/f
+	 * @throws JSQLParserException
+	 * @throws IOException
+	 */
+	private static String isHighestBid(Integer itemID, Double bidValue, DatabaseManager dm) throws JSQLParserException, IOException
+	{
+		String findMax = "SELECT MAX(BidValue) FROM bids_table WHERE ItemID=" + itemID +";";
+		ResultSet rs = dm.execute(findMax);
+		Double maxBidValue = (Double)rs.getTableList().get(0).getEntry()[0].getValue();
+		
+		if(bidValue > maxBidValue)
+		{
+			String removeMaxStatus = "UPDATE bids_table SET HighestBid=false WHERE ItemID=" + itemID +";";
+			ResultSet set = dm.execute(removeMaxStatus);
+			return "true";
+		}
+		return "false";	
+	}
+	
+	private static void printRows(Table table)
+	{
+		ArrayList<DBEntry> rows = table.getTableList();
+		for(DBEntry dbe : rows)
+		{
+			DBBox[] dbb = dbe.getEntry();
+			for(DBBox box : dbb)
+			{
+				if(box.getValue() == null)
+				{
+					System.out.println("null");
+				}
+				else
+				{
+					System.out.println(box.getValue());
+				}
+			}
+			System.out.println("");
+		}
+	}
+	
+	
+	private static void printColumnInfo(Table table)
+	{
+		for(int i = 0; i < table.getSize(); i++)
+		{
+			System.out.println("Column " + (i + 1) + ": ");
+			System.out.println("column name: " + table.getColumnList()[i]);
+			System.out.println("Index name: " + table.getNameOfIndex()[i]);
+			System.out.println("not null: " + table.getNotNull()[i]);
+			System.out.println("is unique: " + table.getUnique()[i]);
+			System.out.println("is primary key: " + table.getPrimaryKey()[i]);
+			System.out.println("");
+
+		}
+		
+	}
+}

@@ -1,0 +1,11 @@
+
+public class DBEntry {
+	
+	private Column[] Entry;
+	
+	public DBEntry(int size)
+	{
+		Entry = new Column[size];
+		
+	}
+}

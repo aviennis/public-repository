@@ -1,0 +1,72 @@
+import java.util.ArrayList;
+
+public class Entry<K, V> {
+	
+	private K key = null;
+	private V value = null;
+	boolean isExternal;
+	private ArrayList<V> listOfValues;
+	
+	public Entry(K key, V value, boolean external)
+	{
+		isExternal = external;
+		if(external)
+		{
+			this.key = key;
+			listOfValues = new ArrayList<V>();
+			listOfValues.add(value);
+		}
+		else
+		{
+			this.key = key;
+			this.value = value;
+		}
+	}
+	
+	public void addValue(V value)
+	{
+		if(isExternal)
+		{
+			listOfValues.add(value);
+		}
+	}
+	
+	public void removeValue(V value)
+	{
+		for(V val : listOfValues)
+		{
+			if(val.equals(value))
+			{
+				listOfValues.remove(value);
+			}
+		}
+	}
+	
+	public boolean isExternal()
+	{
+		return isExternal;
+	}
+	
+	public ArrayList<V> getListOfValues()
+	{
+		return listOfValues;
+	}
+	
+	public K getKey()
+	{
+		return key;
+	}
+	
+	public V getValue()
+	{
+		return value;
+	}
+	
+	public V deleteValue(V valToDelete)
+	{
+		V oldValue = value;
+		value = null;
+		return oldValue;
+	}
+}
+

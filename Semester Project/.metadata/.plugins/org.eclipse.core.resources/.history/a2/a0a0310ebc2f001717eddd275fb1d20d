@@ -1,0 +1,18 @@
+import java.util.HashSet;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnValuePair;
+
+public class DBEntry {
+	
+	private Column[] Entry;
+	HashSet<ColumnValuePair> colValPair;
+	
+	public DBEntry(int size, HashSet<ColumnValuePair> dataSet)
+	{
+		Entry = new Column[size];
+		colValPair = dataSet;
+
+	}
+	
+
+}

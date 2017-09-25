@@ -1,0 +1,134 @@
+import java.io.IOException;
+import java.util.ArrayList;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class ExtraCreditTest {
+
+	public static void main(String[] args) throws JSQLParserException, IOException
+	{
+		//NOTE: I didn't actually include every single column in every table that 
+		//we discussed we should in class. I did the ones that are relevant/realistic
+		//to implement in the EC part of the project, and left out some of the more very
+		//detailed ones that would be implemented if we were doing this entire EBay project.
+		DatabaseManager dm = new DatabaseManager();
+		
+		String tableOne = "CREATE TABLE users_table"
+				+ "("
+				+ "Type varchar(255) DEFAULT 'Buyer',"
+				+ "ID int,"
+				+ "Email varchar(255) UNIQUE,"
+				+ "Username varchar(255) UNIQUE NOT NULL,"
+				+ "Password varchar(255) NOT NULL,"
+				+ "Name varchar(255),"
+				+ "Address varchar(255) NOT NULL,"
+				+ "PRIMARY KEY(ID)"
+				+ ");";
+		
+		String tableTwo = "CREATE TABLE items_table"
+				+ "("
+				+ "SellerID int NOT NULL,"
+				+ "ItemID int,"
+				+ "StartingPrice decimal(10, 10) DEFAULT 0.01,"
+				+ "ItemName varchar (255) NOT NULL,"
+				+ "ItemDescription varchar (255) NOT NULL,"
+				+ "HighestBidID int,"
+				+ "IsSold boolean DEFAULT false,"
+				+ "PRIMARY KEY(ItemID)"
+				+ ");";
+		
+		String tableThree = "CREATE TABLE transaction_table"
+				+ "("
+				+ "BuyerID int NOT NULL,"
+				+ "SellerID int NOT NULL,"
+				+ "ItemID int NOT NULL,"
+				+ "DateSold varchar (255),"
+				+ "ShippingInfo varchar (255),"
+				+ "TransactionID int,"
+				+ "PRIMARY KEY(TransactionID)"
+				+ ");";
+		
+		String tableFour = "CREATE TABLE bids_table"
+				+ "("
+				+ "ItemID int NOT NULL,"
+				+ "BidValue decimal (10, 10) NOT NULL,"
+				+ "BidderID int NOT NULL,"
+				+ "TimeStamp varchar (255),"
+				+ "HigherstBid boolean DEFAULT false,"
+				+ "BidID int,"
+				+ "PRIMARY KEY(BidID)"
+				+ ");";
+		
+		ResultSet createTableOne = dm.execute(tableOne);
+		ResultSet createTableTwo = dm.execute(tableTwo);
+		ResultSet createTableThree = dm.execute(tableThree);
+		ResultSet createTableFour = dm.execute(tableFour);
+		//check to make sure the tables were properly created
+		System.out.println(createTableThree.getTableList().get(0).getEntry()[1].getValue().toString());
+		
+		for(Table t : dm.tables)
+		{
+			printColumnInfo(t);
+			System.out.println("Done with " + t.getName());
+		}
+		
+		//now lets add some sellers
+		String insertSellerOne = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Seller', 111111, 'Seller1@gmail.com', 'Seller1', 'FirstSeller', 'Joe Shmo', '100 Seller St.');";
+		String insertSellerTwo = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Seller', 222222, 'Seller2@gmail.com', 'Seller2', 'SecondSeller', 'Ploni Almoni', '200 Seller Ave.');";
+		String insertSellerThree = "INSERT INTO users_table (Type, ID, Email, Username, Password, Name, Address) VALUES"
+				+ "('Seller', 333333, 'Seller3@gmail.com', 'Seller3', 'ThirdSeller', 'John Doe', '300 Seller Blvd.');";
+		
+		ResultSet insertSellerOneSet = dm.execute(insertSellerOne);
+		ResultSet insertSellerTwoSet = dm.execute(insertSellerTwo);
+		ResultSet insertSellerThreeSet = dm.execute(insertSellerThree);
+
+		//Check that the sellers were correctly inserted:
+		for(Table t : dm.tables)
+		{
+			printRows(t);
+			System.out.println("Done with " + t.getName());
+		}
+		
+		
+	}
+	
+	private static void printRows(Table table)
+	{
+		ArrayList<DBEntry> rows = table.getTableList();
+		for(DBEntry dbe : rows)
+		{
+			DBBox[] dbb = dbe.getEntry();
+			for(DBBox box : dbb)
+			{
+				if(box.getValue() == null)
+				{
+					System.out.println("null");
+				}
+				else
+				{
+					System.out.println(box.getValue());
+				}
+			}
+			System.out.println("");
+		}
+	}
+	
+	
+	private static void printColumnInfo(Table table)
+	{
+		for(int i = 0; i < table.getSize(); i++)
+		{
+			System.out.println("Column " + (i + 1) + ": ");
+			System.out.println("column name: " + table.getColumnList()[i]);
+			System.out.println("Index name: " + table.getNameOfIndex()[i]);
+			System.out.println("not null: " + table.getNotNull()[i]);
+			System.out.println("is unique: " + table.getUnique()[i]);
+			System.out.println("is primary key: " + table.getPrimaryKey()[i]);
+			System.out.println("");
+
+		}
+		
+	}
+}

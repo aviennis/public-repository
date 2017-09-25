@@ -1,0 +1,244 @@
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class RealDatabaseTest {
+	
+	public static void main(String[] args) throws JSQLParserException, IOException
+	{
+		//create the Database Manager to prefore our database queries
+		DatabaseManager dm = new DatabaseManager();
+		
+		//---------CREATE TABLE TEST--------------
+		//Make a new table, with all the different variable types and and limitations and column qualities
+		String createTableQuery = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " GPA decimal(1, 2) DEFAULT 0.00,"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+		ResultSet createTableSet = dm.execute(createTableQuery);
+		//print out the various column's properties to show the table creation worked
+		//and all the info was successfully captured in the ResultSet.
+		printColumnInfo(createTableSet);
+		System.out.println("-------------DONE WITH CREATE TABLE TEST--------------");
+		
+		//----------CREATE INDEX TEST--------------
+		String createIndexQuery = "CREATE INDEX SSNum_Index on YCStudent (SSNum);";
+		ResultSet createIndexResultSet = dm.execute(createIndexQuery);
+		//the test should be successful so the following should print true:
+		System.out.println("");
+		System.out.println(createIndexResultSet.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println("");
+		//now lets make sure the name of the Index was successfully added:
+		//there should be an index named SSNum_Index there
+		for(Table t : dm.tables)
+		{
+			printColumnInfo(t);
+		}
+		System.out.println("-------------DONE WITH CREATE INDEX TEST--------------");
+		
+		//---------INSERT ROWS TEST--------------
+		//insert five valid rows to show which kinds or row insertions are legal
+		//inserting five will also show us the BTree is working to store the values with the splitting
+		
+		//first few insertions have every column filled, column Value paris in different orders to show the pairing works and it doesn't have to be the same order.
+		String insertOne = "INSERT INTO YCStudent (FirstName, LastName, BannerID, CurrentStudent, SSNum, GPA) VALUES ('Avi', 'Ennis', 800324355, true, 123456789, 3.95);";
+		String insertTwo = "INSERT INTO YCStudent (LastName,FirstName, CurrentStudent, BannerID, SSNum, GPA) VALUES ('Shmo', 'Joe', false, 800123456, 121212121, 4.00);";
+		String insertThree = "INSERT INTO YCStudent (SSNum, FirstName, BannerID, CurrentStudent, GPA, LastName) VALUES (123123123, 'Ploni', 800654321, true, 1.03, 'Almoni');";
+		
+		//let the DEFAULT value of CurrentStudent kick in...
+		String insertFour = "INSERT INTO YCStudent (LastName, FirstName, BannerID, SSNum, GPA) VALUES ('Person', 'Random', 800987654, 987654321, 3.05);";
+		//let the NULL value for first Name kick in...
+		String insertFive = "INSERT INTO YCStudent (LastName, CurrentStudent, BannerID, SSNum, GPA) VALUES ('DataStructers-stien', false, 800456789, 987987987, 3.15);";
+		
+		//execute all the queries
+		ResultSet insertSetOne = dm.execute(insertOne);
+		ResultSet insertSetTwo = dm.execute(insertTwo);
+		ResultSet insertSetThree = dm.execute(insertThree);
+		ResultSet insertSetFour = dm.execute(insertFour);
+		ResultSet insertSetFive = dm.execute(insertFive);
+		//make sure the ResultSets are true
+		System.out.println();
+		System.out.println(insertSetOne.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println(insertSetTwo.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println(insertSetThree.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println(insertSetFour.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println(insertSetFive.getTableList().get(0).getEntry()[0].getValue().toString());
+		System.out.println();
+		
+		//print out all the five entries' information
+		
+		for(Table t : dm.tables)
+		{
+			printRows(t);
+		}
+		System.out.println("DONE WITH SUCCESSFUL INSERTIONS");
+		
+		//put in some error inducing insertios and print the error message to make sure we're getting the right error message
+		//the first two will not meet the required value constraints
+		String badInsertOne = "INSERT INTO YCStudent (FirstName, LastName, BannerID, CurrentStudent, SSNum, GPA) VALUES ('Bad', 'Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion Insertaion ', 800000001, true, 00000000, 3.95);";
+		String badInsertTwo = "INSERT INTO YCStudent (FirstName, LastName, BannerID, CurrentStudent, SSNum, GPA) VALUES('Bad', 'Insertion', 800000002, true, 00000000, 11.0);";
+		//a null value in a NOT NULL column
+		String badInsertThree = "INSERT INTO YCStudent (FirstName, BannerID, CurrentStudent, SSNum, GPA) VALUES('Bad', 800000003, true, 00000000, 1.00);";
+		//invalid column name
+		String badInsertFour = "INSERT INTO YCStudent (FirstName, LastName, BannerID, CurrentStudent, SSN, GPA) VALUES('Bad', 'Insertion', 800000004, true, 00000000, 1.00);";
+		//invalid table name
+		String badInsertFive = "INSERT INTO YCSudent (FirstName, LastName, BannerID, CurrentStudent, SSNum, GPA) VALUES('Bad', 'Insertion', 800000005, true, 00000000, 1.00);";
+		
+		ResultSet badInsertSetOne = dm.execute(badInsertOne);
+		ResultSet badInsertSetTwo = dm.execute(badInsertTwo);
+		ResultSet badInsertSetThree = dm.execute(badInsertThree);
+		ResultSet badInsertSetFour = dm.execute(badInsertFour);
+		ResultSet badInsertSetFive = dm.execute(badInsertFive);
+		
+		
+		//print out the error messages
+		System.out.println("");
+		System.out.println(((DBEntry)badInsertSetOne.getTableList().get(0)).getEntry()[1].getValue());
+		System.out.println(((DBEntry)badInsertSetTwo.getTableList().get(0)).getEntry()[1].getValue());
+		System.out.println(((DBEntry)badInsertSetThree.getTableList().get(0)).getEntry()[1].getValue());
+		System.out.println(((DBEntry)badInsertSetFour.getTableList().get(0)).getEntry()[1].getValue());
+		System.out.println(((DBEntry)badInsertSetFive.getTableList().get(0)).getEntry()[1].getValue());
+		System.out.println("");
+		
+		System.out.println("------------------DONE WITH INSERT TESTING---------------");
+		//Now we'll test if the BTrees successfully did all the insertion
+		for(Table t : dm.tables)
+		{
+			for(BTreeImplementation bti : t.getTrees())
+			{
+				//we know there should be two entries in the node, and three in each of the "children" nodes"
+				Node root = bti.root;
+				Node node1 = (Node)root.getNode()[0].getValue();
+				Node node2 = (Node)root.getNode()[1].getValue();
+				
+				Object[] rootkeys = new Object[6];
+				Object[] node1keys = new Object[6];
+				Object[] node2keys = new Object[6];
+				Object[] node1values = new Object[6];
+				Object[] node2values = new Object[6];
+				
+				for(int i = 0; i < 2; i++)
+				{
+					rootkeys[i] = root.getNode()[i].getKey();
+				}
+				for(int i = 0; i < 3; i++)
+				{
+					node1keys[i] = node1.getNode()[i].getKey();
+					node2keys[i] = node2.getNode()[i].getKey();
+					
+					node1values[i] = (DBEntry)node1.getNode()[i].getListOfValues().get(0);
+					node2values[i] = (DBEntry)node2.getNode()[i].getListOfValues().get(0);
+					
+				}
+				for(int i = 0; i < 3; i++)
+				{
+					if(node1values[i] != null)
+					{
+						node1values[i] = ((DBEntry)node1values[i]).getEntry()[2].getValue().toString();
+					}
+					if(node2values[i] != null)
+					{
+						if(((DBEntry)node2values[i]).getEntry()[2].getValue() == null)
+						{
+							node2values[i] = null;
+						}
+						else
+						{
+						node2values[i] = ((DBEntry)node2values[i]).getEntry()[2].getValue().toString();
+						}
+					}
+				}
+				
+				System.out.println(Arrays.toString(rootkeys));
+				System.out.println(Arrays.toString(node1keys));
+				System.out.println(Arrays.toString(node1values));
+				System.out.println(Arrays.toString(node2keys));
+				System.out.println(Arrays.toString(node2values));
+				System.out.println("Done with BTree");
+				System.out.println("");
+				
+			}
+		}
+		
+		System.out.println("-----------DONE WITH BTREE TESTING-----------");
+		
+		//---------------UPDATE TEST----------------------
+		//test a basic update with a compound condition
+		String updateOne = "UPDATE YCStudent SET FirstName='Avery' WHERE BannerID=800324355 AND GPA=3.95;";
+		ResultSet updateSet1 = dm.execute(updateOne);
+		
+		for(Table t : dm.tables)
+		{
+			printRows(t);
+		}
+		
+	}	
+	
+	private static void printRows(Table table)
+	{
+		ArrayList<DBEntry> rows = table.getTableList();
+		for(DBEntry dbe : rows)
+		{
+			DBBox[] dbb = dbe.getEntry();
+			for(DBBox box : dbb)
+			{
+				if(box.getValue() == null)
+				{
+					System.out.println("null");
+				}
+				else
+				{
+					System.out.println(box.getValue());
+				}
+			}
+			System.out.println("");
+		}
+	}
+	private static void printColumnInfo(Table table)
+	{
+		System.out.println("Column Names:");
+		for(String s : table.getColumnList())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("names of indeces:");
+		for(String s : table.getNameOfIndex())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("not null:");
+		for(Boolean b : table.getNotNull())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("unique:");
+		for(Boolean b : table.getUnique())
+		{
+		System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("Primary Key:");
+		for(Boolean b : table.getPrimaryKey())
+		{
+			System.out.println(b.toString());
+		}
+	}
+
+		
+		
+}
+	
+	
+	
+

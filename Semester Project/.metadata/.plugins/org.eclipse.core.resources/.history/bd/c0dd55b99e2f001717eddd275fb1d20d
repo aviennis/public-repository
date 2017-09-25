@@ -1,0 +1,19 @@
+import java.util.ArrayList;
+
+public class Table {
+	
+	private ArrayList<DBEntry> rows;
+	private int amountOfColumns;
+	
+	public Table(int columns)
+	{
+		rows = new ArrayList<DBEntry>();
+		amountOfColumns = columns;
+	}
+	
+	public void addEntry()
+	{
+		rows.add(new DBEntry(amountOfColumns));
+	}
+	
+}

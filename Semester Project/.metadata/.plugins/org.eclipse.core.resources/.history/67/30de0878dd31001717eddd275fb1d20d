@@ -1,0 +1,62 @@
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		String SQL = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+				
+		ResultSet rs = dm.execute(SQL);
+		for(Table t : dm.tables)
+		{
+			printColumnInfo(t);
+		}
+		String query = "CREATE INDEX SSNum_Index on YCStudent (SSNum);";
+		ResultSet rs2 = dm.execute(query);
+		System.out.println(rs2.getColumnList()[0]);
+		for(Table t : dm.tables)
+		{
+			printColumnInfo(t);
+		}
+		
+	}
+	
+	private static void printColumnInfo(Table table)
+	{
+		for(String s : table.getColumnList())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		for(String s : table.getNameOfIndex())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		for(Boolean b : table.getNotNull())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		for(Boolean b : table.getUnique())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		for(Boolean b : table.getPrimaryKey())
+		{
+			System.out.println(b.toString());
+		}
+	}
+	
+}

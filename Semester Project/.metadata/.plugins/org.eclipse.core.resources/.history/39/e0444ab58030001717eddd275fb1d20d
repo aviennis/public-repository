@@ -1,0 +1,144 @@
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnDescription.DataType;
+
+
+public class Table {
+	
+	private String name;
+	private ArrayList<DBEntry> rows;
+	private int amountOfColumns;
+	private DataType[] types;
+	private Object[] defaultValue;
+	private boolean[] unique;
+	private boolean[] notNull;
+	private String[] columnNames;
+	private boolean[] primaryKey;
+	
+	public Table(int columns, String name, ColumnDescription[] colDescriptions, ColumnDescription primary)
+	{
+		rows = new ArrayList<DBEntry>();
+		amountOfColumns = columns;
+		this.name = name;
+		
+		types = new DataType[amountOfColumns];
+		defaultValue = new Object[amountOfColumns];
+		unique = new boolean[amountOfColumns];
+		notNull = new boolean[amountOfColumns];
+		columnNames = new String[amountOfColumns];
+		primaryKey = new boolean[amountOfColumns];
+		//fill our arrays with correct information about the table
+		for (int i = 0; i < colDescriptions.length; i++)
+		{
+			ColumnDescription cd = colDescriptions[i];
+			types[i] = cd.getColumnType();
+			if(cd.getHasDefault())
+			{
+				defaultValue[i] = stringToType(types[i], cd.getDefaultValue());
+			}
+			if(cd.isUnique())
+			{
+				unique[i] = true;
+			}
+			if(cd.isNotNull())
+			{
+				notNull[i] = true;
+			}
+			columnNames[i] = cd.getColumnName();
+			if(columnNames[i].equals(primary))
+			{
+				primaryKey[i] = true;
+			}
+		}
+		
+	}
+	
+	/**
+	 * convert the value in string form to the correct data type
+	 * @param type
+	 * @param value
+	 * @return
+	 */
+	private Object stringToType(DataType type, String value)
+	{
+		switch(type)
+		{
+			case INT:
+				return Integer.parseInt(value);	
+			case BOOLEAN:
+				if(value.equals("true"))
+				{
+					return true;
+				} else {return false;}
+			case VARCHAR:
+				return value;
+			case DECIMAL:
+				return Double.parseDouble(value);
+			default:
+				return null;
+
+		}
+		
+	}
+		
+	
+	/**
+	 * 
+	 * @param colValPairs
+	 */
+	public boolean addRow(ColumnValuePair[] colValPairs)
+	{
+		//fill in the values for the entry
+		DBEntry entry = new DBEntry(this.getSize());
+		for(int i = 0; i < entry.getSize(); i++)
+		{
+			for(int j = 0; j < colValPairs.length; j++)
+			{
+				ColumnValuePair cvp = colValPairs[j];
+				//if the column matches the column in question...
+				if(cvp.getColumnID().getColumnName().equals(columnNames[i]))
+				{
+					DBBox<Object> b = new DBBox<Object>(stringToType(types[i], cvp.getValue()));
+					entry.getEntry()[i] = b;
+					break;
+				}
+				else
+				{
+					//if there is a default value to give
+					if(defaultValue[i] != null)
+					{
+						DBBox<Object> b = new DBBox<Object>(defaultValue[i]);
+						entry.getEntry()[i] = b;
+					}
+					else
+					{
+						entry.getEntry()[i] = null;
+					}
+				}
+			}
+		}
+		//add the entry to the Table
+		rows.add(entry);
+		return true;
+	}
+	
+	
+	public String getName()
+	{
+		return name;
+	}
+
+	public int getSize()
+	{
+		return amountOfColumns;
+	}
+	
+	public ArrayList<DBEntry> getTableList()
+	{
+		return rows;
+	}
+	
+}

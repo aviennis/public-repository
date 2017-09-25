@@ -1,0 +1,90 @@
+import java.util.ArrayList;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		String SQL = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+				
+		ResultSet rs = dm.execute(SQL);
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String query = "CREATE INDEX SSNum_Index on YCStudent (SSNum);";
+		ResultSet rs2 = dm.execute(query);
+		//System.out.println(rs2.toString());
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String q = "INSERT INTO YCStudent (FirstName, LastName, Class, BannerID, SSNum) VALUES ('Ploni','Almoni', 'Senior',800012345, 12321123);";
+		String q1 = "INSERT INTO YCStudent (FirstName, LastName, CurrentStudent, BannerID, SSNum) VALUES ('Avi','Ennis', true, 800324355, 12321122);";
+		String q2 = "INSERT INTO YCStudent (LastName, Class, BannerID, SSNum) VALUES ('shmo', 'junior',80076876, 1234567);";
+		ResultSet rs3 = dm.execute(q);
+		ResultSet rs4 = dm.execute(q1);
+		ResultSet rs5 = dm.execute(q2);
+		for(Table t : dm.tables)
+		{
+			for(DBEntry dbe : t.getTableList())
+			{
+				for(DBBox dbb : dbe.getEntry())
+				{
+					System.out.println(dbb.getValue());
+				}
+				System.out.println("--------");
+			}
+		}
+		
+		
+		
+		//System.out.println(rs3.getTableList().get(0).getEntry()[0].getValue().toString());
+		
+	}
+	
+	private static void printColumnInfo(Table table)
+	{
+		System.out.println("Column Names:");
+		for(String s : table.getColumnList())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("names of indeces:");
+		for(String s : table.getNameOfIndex())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("not null:");
+		for(Boolean b : table.getNotNull())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("unique:");
+		for(Boolean b : table.getUnique())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("Primary Key:");
+		for(Boolean b : table.getPrimaryKey())
+		{
+			System.out.println(b.toString());
+		}
+	}
+	
+}

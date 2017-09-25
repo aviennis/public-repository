@@ -1,0 +1,1105 @@
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnDescription.DataType;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.SelectQuery.FunctionInstance;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.SelectQuery.FunctionName;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.SelectQuery.OrderBy;
+
+
+public class Table {
+	
+	private String name;
+	private ArrayList<DBEntry> rows;
+	private int amountOfColumns;
+	private DataType[] types;
+	private Object[] defaultValue;
+	private boolean[] isUnique;
+	private boolean[] notNull;
+	private String[] columnNames;
+	private boolean[] primaryKey;
+	private boolean[] isIndex;
+	private ArrayList<BTreeImplementation> BTrees;
+	private String[] nameOfIndex;
+	private Double[] valueLimitations;
+	
+	public Table(int columns, String name, ColumnDescription[] colDescriptions, ColumnDescription primary) throws IOException
+	{
+
+		rows = new ArrayList<DBEntry>();
+		amountOfColumns = columns;
+		this.name = name;
+		
+		types = new DataType[amountOfColumns];
+		defaultValue = new Object[amountOfColumns];
+		isUnique = new boolean[amountOfColumns];
+		notNull = new boolean[amountOfColumns];
+		columnNames = new String[amountOfColumns];
+		primaryKey = new boolean[amountOfColumns];
+		isIndex = new boolean[amountOfColumns];
+		BTrees = new ArrayList<BTreeImplementation>();
+		nameOfIndex = new String[amountOfColumns];
+		valueLimitations = new Double[amountOfColumns];
+		
+		//fill our arrays with correct information about the table
+		if(colDescriptions != null)
+		{
+			for (int i = 0; i < colDescriptions.length; i++)
+			{
+				ColumnDescription cd = colDescriptions[i];
+				//store the types in an array
+				types[i] = cd.getColumnType();
+				//set the value limitations for VARCHAR and DOUBLE
+				if(cd.getVarCharLength() != 0)
+				{
+					valueLimitations[i] = cd.getVarCharLength() * 1.0;
+				}
+				else
+				{
+					if(cd.getWholeNumberLength() != 0)
+					{
+						int beforeDecimal = cd.getWholeNumberLength();
+						int afterDecimal = cd.getFractionLength();
+						String s = beforeDecimal + "." + afterDecimal;
+						Double d = Double.parseDouble(s);
+						valueLimitations[i] = d;
+					}
+				}
+				//set the default values and store in an array			
+				if(cd.getHasDefault())
+				{
+					defaultValue[i] = stringToType(types[i], cd.getDefaultValue(), i);
+				}
+				//store which values are unique
+				if(cd.isUnique())
+				{
+					isUnique[i] = true;
+				}
+				//store which values are not null
+				if(cd.isNotNull())
+				{
+					notNull[i] = true;
+				}
+				//store the column names
+				columnNames[i] = cd.getColumnName();
+				//store the primary column (primary column, make it an index, create the Btree)
+				if(columnNames[i].equals(primary.getColumnName()))
+				{
+					primaryKey[i] = true;
+					isIndex[i] = true;
+					isUnique[i] = true;
+					notNull[i] = true;
+					nameOfIndex[i] = columnNames[i] + "_INDEX";
+				
+					BTreeImplementation bte = createBTree(i, primary.getColumnName());	
+					BTrees.add(bte);
+				}
+				//set the value limitations
+				if(cd.getVarCharLength() != 0)
+				{
+					valueLimitations[i] = cd.getVarCharLength() * 1.0;
+				}
+				else
+				{
+					if(cd.getWholeNumberLength() != 0)
+					{
+						int beforeDecimal = cd.getWholeNumberLength();
+						int afterDecimal = cd.getFractionLength();
+						String s = beforeDecimal + "." + afterDecimal;
+						Double d = Double.parseDouble(s);
+						valueLimitations[i] = d;
+					}
+				}
+			}
+		}
+	}		
+	
+	/**
+	 * adds a row to the Table
+	 * @param colValPairs
+	 * @throws IOException 
+	 */
+	public boolean addRow(ColumnValuePair[] colValPairs) throws IOException
+	{
+		//fill in the values for the entry
+		DBEntry entry = new DBEntry(amountOfColumns);
+		
+		//first check if its a valid column name
+		for(int i = 0; i < colValPairs.length; i++)
+		{
+			boolean validColumnName = false;
+			for(int j = 0; j < amountOfColumns; j++)
+			{
+				if((colValPairs[i].getColumnID().getColumnName()).equals(columnNames[j]))
+				{
+					validColumnName = true;
+					break;
+				}
+			}
+			if(!validColumnName)
+			{
+				throw new IOException("Not a valid column name");
+			}
+		}
+		//if the columnNames are all valid, create and enter the new Database Entry
+		for(int i = 0; i < entry.getSize(); i++)
+		{
+			boolean entered = false;
+			for(int j = 0; j < colValPairs.length; j++)
+			{
+				ColumnValuePair cvp = colValPairs[j];
+				//if the column matches the column in question...
+				if(cvp.getColumnID().getColumnName().equals(columnNames[i]))
+				{
+					//add it to the entry
+					if(!isUnique[i] || isUniqueValue(cvp, i))
+					{	
+						DBBox<Object> b = new DBBox<Object>(stringToType(types[i], cvp.getValue(), i));
+						entry.getEntry()[i] = b;
+						entered = true;
+						break;
+					}
+					//if there needs to be a unique value, but the value offered isn't unique...
+					else {throw new IOException("Not a unique value");}
+				}
+			}
+			//if there are no matches, the value was not given
+			//if there is a default value to give...
+			if(!entered)
+			{
+				if(defaultValue[i] != null)
+				{
+					DBBox<Object> b = new DBBox<Object>(defaultValue[i]);
+					entry.getEntry()[i] = b;
+				}
+				//if there is no default value...
+				//if this column is not allowed to be null, but there is no given value...
+				else if(notNull[i])
+				{
+					throw new IOException("Null value not allowed");
+				}
+				//if it can be null, set the value to null
+				else
+				{
+					DBBox<Object> b = new DBBox<Object>(null);
+					entry.getEntry()[i] = b;
+				}
+			}
+			//if its an index, add to btree
+			
+		}
+		//add the entry to the Table
+		rows.add(entry);
+		for(int i = 0; i < amountOfColumns; i++)
+		{
+			if(isIndex[i])
+			{
+				for(BTreeImplementation bte: BTrees)
+				{
+					if(bte.getName().equals(columnNames[i]))
+					{
+						addToBTree(bte, i, entry);
+					}
+				}
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * runs the select query. returns An ArrayList of rows:
+	 * If its a search for rows query, the ArrayList contains the rows
+	 * If it is a search for FunctionInstance query, it contains Entries of single boxes that contain the value of 
+	 * instance queries. However many functions the user is searching for, that is how many DBEntries will be in the ArrayList.
+	 * @param sq
+	 * @return
+	 * @throws IOException
+	 */
+	public ArrayList<DBEntry> select(SelectQuery sq) throws IOException
+	{
+		//if it is a rows query
+		if((sq.getFunctionMap().isEmpty()))
+		{
+			return selectRows(sq);
+		}
+		else
+		{
+			ArrayList<DBEntry> returnList = new ArrayList<DBEntry>();
+			ArrayList<Object> list = selectFunction(sq);
+			for(int i = 0; i < list.size(); i++)
+			{
+				Object returnValue = list.get(i);
+				DBBox<Object> dbb = new DBBox<Object> (returnValue);
+				DBEntry dbe = new DBEntry(1);
+				dbe.getEntry()[0] = dbb;
+				returnList.add(dbe);
+				
+			}
+			return returnList;
+			
+		}
+	}
+	
+	/**
+	 * preforms the select function operation. Each DBEntry will contain one DBBox with the value of the select Function operation.
+	 * However many functions the user is looking for, that is how many will be in the ArrayList.
+	 * @param sq
+	 * @return
+	 * @throws IOException
+	 */
+	private ArrayList<Object> selectFunction(SelectQuery sq) throws IOException
+	{
+		ArrayList<Object> returnList = new ArrayList<Object>();
+		String columnName = "";
+		Map<ColumnID, FunctionInstance> map = sq.getFunctionMap();
+		Iterator<ColumnID> it = map.keySet().iterator();
+		int index = 0;
+		while(it.hasNext())
+		{
+			//assign the varibales
+			ColumnID ci = it.next();
+			columnName = ci.getColumnName();
+			FunctionName fi = ((FunctionInstance)sq.getFunctionMap().values().toArray()[index]).function;
+			boolean distinct = ((FunctionInstance)sq.getFunctionMap().values().toArray()[index]).isDistinct;
+			index++;
+		
+			for (int i = 0; i < amountOfColumns; i++)
+			{
+				if(columnNames[i].equals(columnName))
+				{	
+					if(fi.toString().equals("AVG"))
+					{
+						Double total = 0.0;
+						for(DBEntry dbe : rows)
+						{
+							if(dbe.getEntry()[i].getValue() instanceof Integer)
+							{
+								total += (Integer) dbe.getEntry()[i].getValue();
+							}
+							else if(dbe.getEntry()[i].getValue() instanceof Double)
+							{
+								total += (Double) dbe.getEntry()[i].getValue();
+							}
+						}
+						returnList.add(total/rows.size());
+					}	
+					else if(fi.toString().equals("COUNT"))
+					{
+						if(!distinct)
+						{
+							returnList.add(rows.size());
+						}
+						else
+						{
+							HashSet<Object> hs = new HashSet<Object>();
+							//allow the HashSet to take out the repeat values
+							for(DBEntry d : rows)
+							{
+								hs.add(d.getEntry()[i].getValue());
+							}
+							returnList.add(hs.size());
+						}
+					}	
+					else if(fi.toString().equals("MAX"))
+					{
+						if(types[i].toString().equals("INT"))
+						{
+							Integer max = Integer.MIN_VALUE;
+							for(DBEntry dbe : rows)
+							{
+								if(dbe.getEntry()[i].getValue() == null)
+								{
+									
+								}
+								else if((Integer)dbe.getEntry()[i].getValue() > max)
+								{
+									max = (Integer)dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(max);
+						}
+						else
+						{
+							Double max = Double.MIN_VALUE;
+							for(DBEntry dbe : rows)
+							{
+								if(dbe.getEntry()[i].getValue() == null)
+								{
+									
+								}
+								else if((Double)dbe.getEntry()[i].getValue() > max)
+								{
+									max = (Double)dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(max);
+						}
+					}	
+					else if(fi.toString().equals("MIN"))
+					{
+						if(types[i].toString().equals("INT"))
+						{
+							Integer min = Integer.MAX_VALUE;
+							for(DBEntry dbe : rows)
+							{
+								if(dbe.getEntry()[i].getValue() == null)
+								{
+									
+								}
+								
+								else if((Integer)dbe.getEntry()[i].getValue() < min)
+								{
+									min = (Integer)dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(min);
+						}
+						else
+						{
+							Double min = Double.MAX_VALUE;
+							for(DBEntry dbe : rows)
+							{
+								if(dbe.getEntry()[i].getValue() == null)
+								{
+									
+								}
+								else if((Double)dbe.getEntry()[i].getValue() < min)
+								{
+									min = (Double)dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(min);
+						}
+					}
+					else
+					{
+						if(!distinct)
+						{
+							Double sum = 0.0;
+							for(DBEntry dbe : rows)
+							{
+								if(types[i].toString().equals("INT"))
+								{
+									sum += (Integer) dbe.getEntry()[i].getValue() * 1.0;
+								}
+								else if(types[i].toString().equals("DECIMAL"))
+								{
+									sum += (Double) dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(sum);
+						}
+						else
+						{
+							Double sum = 0.0;
+							HashSet<Object> set = new HashSet<Object>();
+							for(DBEntry dbe : rows)
+							{
+								set.add(dbe.getEntry()[i].getValue());
+							}
+							for(DBEntry dbe : rows)
+							{
+								if(dbe.getEntry()[i].getValue() instanceof Integer)
+								{
+									sum += (Integer) dbe.getEntry()[i].getValue();
+								}
+								else if (dbe.getEntry()[i].getValue() instanceof Double)
+								{
+									sum += (Double) dbe.getEntry()[i].getValue();
+								}
+							}
+							returnList.add(sum);
+						}
+					}
+				}			
+			}
+		}
+		return returnList;
+	}
+	
+	/**
+	 * preforms the select rows function
+	 * returns an array list of rows with the desired columns of the desired rows in the desired order
+	 * @param sq
+	 * @return
+	 * @throws IOException
+	 */
+	private ArrayList<DBEntry> selectRows(SelectQuery sq) throws IOException
+	{
+		ArrayList<DBEntry> list = new ArrayList<DBEntry>();
+		
+		if(sq.getWhereCondition() != null)
+		{
+			list = meetCondition(sq.getWhereCondition());
+		}
+		else
+		{
+			list.addAll(rows);
+		}
+		
+		//limit the values to distinct values, if necessary
+		if(sq.isDistinct())
+		{
+			getDistinct(list);
+		}
+		//order the values, if necessary 
+		if(sq.getOrderBys().length != 0)
+		{
+			orderBy(list, sq.getOrderBys());
+		}
+		
+		//limit the list to the correct columns
+		if(sq.getSelectedColumnNames().length != amountOfColumns)
+		{
+			chooseCorrectColumns(sq, list);
+		}
+		return list;
+	}
+	
+	/**
+	 * determines which columns the user wants, Makes new Database Entries and replaces the old ones
+	 * @param sq
+	 * @param newList
+	 */
+	private void chooseCorrectColumns(SelectQuery sq,ArrayList<DBEntry> newList)
+	{
+		ArrayList<DBEntry> tempList = new ArrayList<DBEntry>();
+		for(DBEntry dbe : newList)
+		{
+			DBEntry newEntry = new DBEntry(sq.getSelectedColumnNames().length);
+			for(int i = 0; i < amountOfColumns; i++)
+			{
+				for(int j = 0; j < sq.getSelectedColumnNames().length; j++)
+				{
+					if(columnNames[i].equals(sq.getSelectedColumnNames()[j].getColumnName()))
+					{
+						DBBox newBox = new DBBox(dbe.getEntry()[i].getValue());
+						newEntry.getEntry()[j] = newBox;
+						break;
+					}
+				}
+			}
+			tempList.add(newEntry);
+		}
+		newList.clear();
+		newList.addAll(tempList);
+	}	
+	
+	/**
+	 * preforms the create index function
+	 * @param ciq
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean createIndex(CreateIndexQuery ciq) throws IOException
+	{
+		String colName = ciq.getColumnName();
+		for(int i = 0; i < amountOfColumns; i++)
+		{
+			if(columnNames[i].equals(colName))
+			{
+				isIndex[i] = true;
+				nameOfIndex[i] = columnNames[i] + "_INDEX";
+				BTreeImplementation bt = createBTree(i, columnNames[i]);
+				//add the newly indexed values for all the already existant rows into the new BTree
+				for(DBEntry entry : rows)
+				{
+					addToBTree(bt, i, entry);	
+				}
+				BTrees.add(bt);
+				return true;
+			}
+		}
+		throw new IOException("Not a valid column Name");	
+	}
+	
+	/**
+	 * preforms the delete query 
+	 * @param dq
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean deleteRow(DeleteQuery dq) throws IOException
+	{
+		boolean success = false;
+		Condition condition = dq.getWhereCondition();
+		
+		//Find the Entries in the Database that meet the conditions
+		//if this is an indexed row, the method will use the BTree to find the rows
+		//if this is a normal row, it will just run through the list to find the necasary rows
+		
+		//determine what we have to delete
+		ArrayList<DBEntry> list = new ArrayList<DBEntry>();
+		if(condition == null)
+		{
+			//if there is no condition, we are to delete everthing...
+			list.addAll(rows);
+		}
+		else{
+			//else, find the rows that meet the condition...
+			list.addAll(meetCondition(condition));
+		}
+		//and delete them from the rows and the database
+		int counter = 0;
+		while(counter < list.size())
+		{
+			rows.remove(list.get(counter));
+			success = true;
+			//remove from BTree
+			for(int i = 0; i < amountOfColumns; i++)
+			{
+				if(isIndex[i])
+				{
+					for(BTreeImplementation bti : BTrees)
+					{
+						if(bti.getName().equals(columnNames[i]))
+						{
+							bti.delete((Comparable) list.get(counter).getEntry()[i].getValue(), list.get(counter));
+						}
+					}
+				}
+			}
+			counter++;
+		}
+		return success;
+	}
+	
+	/**
+	 * preforms the update query
+	 * @param uq
+	 * @return
+	 * @throws IOException
+	 */
+	public boolean updateQuery(UpdateQuery uq) throws IOException
+	{
+		boolean columnNameMatches = false;
+		ColumnValuePair[] colValPairs = uq.getColumnValuePairs();
+		ArrayList<DBEntry> list = meetCondition(uq.getWhereCondition());
+		
+		for(DBEntry dbe : list)
+		{
+			for(ColumnValuePair cvp : colValPairs)
+			{
+				for(int i = 0; i < amountOfColumns; i++)
+				{
+					if(columnNames[i].equals(cvp.getColumnID().getColumnName()))
+					{
+						if((!isUnique[i] || isUniqueValue(cvp, i)))
+						{
+							DBBox dbb = new DBBox(stringToType(types[i], cvp.getValue(), i));
+							//remove the old value from the btree, and add the new one, if necessary
+							if(isIndex[i])
+							{
+								for(BTreeImplementation bti : BTrees)
+								{
+									if(bti.getName().equals(columnNames[i]))
+									{
+										bti.delete((Comparable)dbe.getEntry()[i].getValue(), dbe);
+										bti.add((Comparable)dbb.getValue(), dbe);
+										
+									}
+								}
+							}
+							dbe.getEntry()[i] = dbb;
+						}
+						columnNameMatches = true;
+					}
+				}
+			}
+		}
+		if(list.isEmpty())
+		{
+			throw new IOException("nothing matches the specifications");
+		}
+		if(!columnNameMatches)
+		{
+			throw new IOException("Not a valid column name");
+		}
+		return columnNameMatches;
+	}
+	
+	/**
+	 * gets the distinct values from an arrayList. Takes in an array list and deletes all the repeat values
+	 * @param list
+	 */
+	private void getDistinct(ArrayList<DBEntry> list)
+	{
+		ArrayList<DBEntry> compareList = new ArrayList<DBEntry>();
+		compareList.addAll(list);
+		boolean same = true;
+		Iterator<DBEntry> it = compareList.iterator();
+		while(it.hasNext())
+		{
+			DBEntry dbe = it.next();
+			it.remove();
+			for(DBEntry dbe2 : compareList)
+			{
+				for(int i = 0; i < dbe.getEntry().length; i++)
+				{
+					if(!(dbe.getEntry()[i].getValue().equals((dbe2.getEntry()[i].getValue()))))
+					{
+						same = false;
+					}
+					if(same)
+					{
+						list.remove(dbe);
+					}
+				}
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 * @param list
+	 * @param ob
+	 * @return
+	 */
+	private ArrayList<DBEntry> orderBy(ArrayList<DBEntry> list, OrderBy[] ob)
+	{
+		for(int i = ob.length; i > 0; i--)
+		{
+			OrderBy orderBy = ob[i - 1];
+			String columnName = orderBy.getColumnID().getColumnName();
+			for(int j = 0; j < amountOfColumns; j++)
+			{
+				String s = columnNames[j];
+				if(columnNames[j].equals(columnName))
+				{
+					BTreeImplementation bti = createBTree(j, "");
+					for(DBEntry dbe : list)
+					{
+						bti.add((Comparable) dbe.getEntry()[j].getValue(), dbe);
+					}
+					if(orderBy.isAscending())
+					{
+						list = bti.getAllAscending();
+					}
+					else
+					{
+						list = bti.getAllDescending();
+					}
+				}
+			}
+		}
+		return list;
+	}
+	
+	/**
+	 * recursively meet a condition
+	 * @param condition
+	 * @return
+	 * @throws IOException
+	 */
+	private ArrayList<DBEntry> meetCondition(Condition condition) throws IOException
+	{
+		//Base case: it is a simple condition
+		if(!(condition.getLeftOperand() instanceof Condition))
+		{
+			//meet the condition from either the list or the BTree
+			String colName = ((ColumnID)condition.getLeftOperand()).getColumnName();
+			for(int i = 0; i < amountOfColumns; i++)
+			{
+				if(columnNames[i].equals(colName))
+				{
+					if(isIndex[i])
+					{
+						return meetConditionFromBTree(condition, i);
+					}
+					else
+					{
+						return meetConditionFromList(condition, i);
+					}
+				}
+			}
+			throw new IOException(colName + " is not a valid column Name");
+		}
+		//else, we have a complex condition, and each operand is an entire condition
+		else
+		{
+			//split the condition into two parts
+			Condition c1 = (Condition)condition.getLeftOperand();
+			Condition c2 = (Condition)condition.getRightOperand();
+			//recursively meet the condition
+			if(condition.getOperator().toString().equals("AND"))
+			{
+				return andComplexCondition(meetCondition(c1), meetCondition(c2));
+			}
+			else
+			{
+				return orComplexCondition(meetCondition(c1), meetCondition(c2));
+			}
+		}
+	}
+	
+	/**
+	 * take two arrayLists and return an arrayList for a conjoining AND condition
+	 * @param a1
+	 * @param a2
+	 * @return
+	 */
+	private ArrayList<DBEntry> andComplexCondition(ArrayList<DBEntry> a1, ArrayList<DBEntry> a2)
+	{
+		ArrayList<DBEntry> returnList = new ArrayList<DBEntry>();
+		if(a1.isEmpty() || a2.isEmpty())
+		{
+			return returnList;
+		}
+		
+		for(DBEntry dbe : a1)
+		{
+			for(DBEntry entry : a2)
+			{
+				if(entry.equals(dbe))
+				{
+					returnList.add(entry);
+				}
+			}
+		}
+		return returnList;
+	}
+	
+	/**
+	 * take two arrayLists and return an arrayList for a conjoining OR condition
+	 * @param a1
+	 * @param a2
+	 * @return
+	 */
+	private ArrayList<DBEntry> orComplexCondition(ArrayList<DBEntry> a1, ArrayList<DBEntry> a2)
+	{
+		HashSet<DBEntry> hs = new HashSet<DBEntry>();
+		ArrayList<DBEntry> returnArray = new ArrayList<DBEntry>();
+		//because a hashset wont allow duplicate entries...
+		hs.addAll(a1);
+		hs.addAll(a2);
+		returnArray.addAll(hs);
+		return returnArray;
+	}
+	
+	/**
+	 * use the BTree to return an ArrayList of DBEntries meeting the condition specified
+	 * @param condition
+	 * @param index
+	 * @return
+	 * @throws IOException
+	 */
+	private ArrayList<DBEntry> meetConditionFromBTree(Condition condition, int index) throws IOException
+	{
+		ArrayList<DBEntry> returnList = new ArrayList<DBEntry>();
+		//determine the correct BTree
+		String name = columnNames[index];
+		BTreeImplementation bti = null;
+		for(BTreeImplementation b : BTrees)
+		{
+			if(b.getName().equals(name))
+			{
+				bti = b;
+			}
+		}
+		
+		switch(condition.getOperator())
+		{
+			case EQUALS:
+				return bti.search((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));
+			case NOT_EQUALS:
+				ArrayList<DBEntry> a = bti.search((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));				
+				ArrayList<DBEntry> b = rows;
+				b.removeAll(a);
+				return b;
+			case LESS_THAN:
+				return bti.getLessThan((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));
+			case lESS_THAN_OR_EQUALS:
+				return bti.getLessThanOrEqual((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));
+			case GREATER_THAN:
+				return bti.getGreaterThan((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));
+			case GREATER_THAN_OR_EQUALS:
+				return bti.getGreaterThanOrEqualTo((Comparable)stringToType(types[index], (String) condition.getRightOperand(), index));				
+		}
+		return returnList;
+	}
+	
+	/**
+	 * use the ArrayList of DBEntries to return an ArrayList of DBEntries meeting the condition specified
+	 * @param condition
+	 * @param index
+	 * @return
+	 * @throws IOException
+	 */
+	private ArrayList<DBEntry> meetConditionFromList(Condition condition, int index) throws IOException
+	{
+		ArrayList<DBEntry> returnList = new ArrayList<DBEntry>();
+		switch(condition.getOperator())
+		{
+			case EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if (dbe.getEntry()[index].getValue().equals(stringToType(types[index], (String) condition.getRightOperand(), index)))
+						{
+							returnList.add(dbe);
+							if(isUnique[index])
+							{
+								break;
+							}
+						}
+					}
+				}
+				break;
+			case NOT_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if(!(dbe.getEntry()[index].getValue().equals(stringToType(types[index], (String) condition.getRightOperand(), index))))
+						{
+							returnList.add(dbe);
+						}
+					}
+				}
+				break;
+			case LESS_THAN:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) condition.getRightOperand(), index)) < 0)
+						{
+							returnList.add(dbe);
+						}
+					}
+				}
+				break;
+			case lESS_THAN_OR_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if (((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) condition.getRightOperand(), index)) <= 0)
+						{
+							returnList.add(dbe);
+						}
+					}
+				}
+				break;
+			case GREATER_THAN:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) condition.getRightOperand(), index)) > 0)
+						{
+							returnList.add(dbe);
+						}
+					}
+				}
+				break;
+			case GREATER_THAN_OR_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(dbe.getEntry()[index].getValue() != null)
+					{
+						if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) condition.getRightOperand(), index)) >= 0)
+						{
+							returnList.add(dbe);
+						}
+					}
+				}
+				break;
+		}
+		return returnList;
+	}
+	
+	
+	/**
+	 * create a new BTree of the proper Type
+	 * @param index the column Number so we can use the types[] to find the type for the BTree
+	 * @param columnName
+	 * @return
+	 */
+	private BTreeImplementation createBTree(int index, String columnName)
+	{
+		if(types[index].toString().equals("INT"))
+		{
+			BTreeImplementation<Integer, DBEntry> bte = new BTreeImplementation<Integer, DBEntry>(6, columnName,Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
+			return bte;
+		}
+		else if (types[index].toString().equals("VARCHAR"))
+		{
+			BTreeImplementation<String, DBEntry> bte = new BTreeImplementation<String, DBEntry>(6, columnName, " ", "  ");
+			return bte;
+		}
+		else if (types[index].toString().equals("BOOLEAN"))
+		{
+			BTreeImplementation<Boolean, DBEntry> bte = new BTreeImplementation<Boolean, DBEntry>(6, columnName, false, null);
+			return bte;
+		}
+		else {
+			BTreeImplementation<Double, DBEntry> bte = new BTreeImplementation<Double, DBEntry>(6, columnName, Double.MIN_VALUE, Double.MIN_VALUE + 1);
+			return bte;
+		}
+	}
+	
+	/**
+	 * Add a new entry to the BTree with the correct type
+	 * @param tree
+	 * @param index the column Number so we can determine the type
+	 * @param entry
+	 */
+	private void addToBTree(BTreeImplementation tree, int index, DBEntry entry)
+	{
+		if(types[index].toString().equals("INT"))
+		{
+			//Entry<Integer, DBEntry> e = new Entry<Integer, DBEntry>((Integer) entry.getEntry()[index].getValue(), entry);
+			if(entry.getEntry()[index] != null){
+				tree.add((Integer)entry.getEntry()[index].getValue(), entry);
+			}
+			else
+			{
+				tree.add(null, entry);
+			}
+		}
+		else if (types[index].toString().equals("VARCHAR"))
+		{
+			Entry<String, DBEntry> e = new Entry<String, DBEntry> ((String) entry.getEntry()[index].getValue(), entry, true);
+			tree.add(e);
+		}
+		else if (types[index].toString().equals("BOOLEAN"))
+		{
+			Entry<Boolean, DBEntry> e = new Entry<Boolean, DBEntry> ((Boolean) entry.getEntry()[index].getValue(), entry, true);
+			tree.add(e);
+		}
+		else {
+			Entry<Double, DBEntry> e = new Entry<Double, DBEntry> ((Double) entry.getEntry()[index].getValue(), entry, true);
+			tree.add(e);
+		}
+	}
+	
+	/**
+	 * determines if the propopsed value is unique.
+	 * @param colValPair
+	 * @param valueInQuestion
+	 * @return
+	 * @throws IOException 
+	 */
+	private boolean isUniqueValue(ColumnValuePair colValPair, int index) throws IOException
+	{
+		
+		
+		
+		for(DBEntry dbe : rows)
+		{
+			if(dbe.getEntry()[index].getValue() == null)
+			{
+				//dont actually do anything just don't do the next part because itll be a NullPointerException
+			}
+			else if((dbe.getEntry()[index].getValue()).equals(stringToType(types[index], colValPair.getValue(), index)))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * convert the value in string form to the value in the correct data type
+	 * @param type
+	 * @param value
+	 * @param i The column Number so we can use the types[] to determine the correct type
+	 * @return
+	 * @throws IOException 
+	 */
+	private Object stringToType(DataType type, String value, int i) throws IOException
+	{
+		switch(type)
+		{
+			case INT:
+				return Integer.parseInt(value);	
+			case BOOLEAN:
+				if(value.equals("true"))
+				{
+					return true;
+				} else {return false;}
+			case VARCHAR:
+				//+2.0 to account for the two apostraphes still on the value String
+				if((value.length() * 1.0) <= valueLimitations[i] + 2.0)
+				{
+					return value.substring(1,value.length() - 1);
+				}
+				else
+				{
+					throw new IOException("data doesn't fit the type specifications: String is too long");
+				}
+			case DECIMAL:
+				String beforeValueAllowed = valueLimitations[i].toString().substring(0, valueLimitations[i].toString().indexOf("."));
+				String afterValueAllowed = valueLimitations[i].toString().substring(valueLimitations[i].toString().indexOf(".") + 1);
+				Integer wholeNumberPlacesAllowed = Integer.parseInt(beforeValueAllowed);
+				Integer fractionalPlacesAllowed = Integer.parseInt(afterValueAllowed);
+				
+				Integer wholeNumberPlacesGiven = value.substring(0, value.indexOf(".")).length();
+				Integer fractionalPlacesGiven = value.substring(value.indexOf(".") + 1).length();
+				
+				if(wholeNumberPlacesGiven <= wholeNumberPlacesAllowed && fractionalPlacesGiven <= fractionalPlacesAllowed)
+				{
+					return Double.parseDouble(value);
+				}
+				else
+				{
+					throw new IOException("data doesn't fit the type specifications");
+				}
+			default:
+				return null;
+		}
+	}
+
+	//simple getters and setters
+	public String getName()
+	{
+		return name;
+	}
+
+	public int getSize()
+	{
+		return amountOfColumns;
+	}
+	
+	public ArrayList<DBEntry> getTableList()
+	{
+		return rows;
+	}
+	public String[] getColumnList()
+	{
+		return columnNames;
+	}
+	public String[] getNameOfIndex()
+	{
+		return nameOfIndex;
+	}
+	public boolean[] getUnique()
+	{
+		return isUnique;
+	}
+	public boolean[] getIndex()
+	{
+		return isIndex;
+	}
+	public boolean[] getNotNull()
+	{
+		return notNull;
+	}
+	public boolean[] getPrimaryKey()
+	{
+		return primaryKey;
+	}
+	public ArrayList<BTreeImplementation> getTrees()
+	{
+		return BTrees;
+	}
+	
+	
+}

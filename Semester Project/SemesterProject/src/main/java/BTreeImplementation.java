@@ -1,0 +1,637 @@
+import java.util.ArrayList;
+import java.util.Iterator;
+
+public class BTreeImplementation<K extends Comparable <K>, V> {
+
+	Node root;
+	private String name;
+	private int nodeSize;
+	private K SENTINAL_KEY;
+	private K nullKey;
+	
+	protected BTreeImplementation (int nodeSize, String name, K sentinal, K nullKey)
+	{
+		SENTINAL_KEY = sentinal;
+		this.nullKey = nullKey;
+		this.name = name;
+		this.nodeSize = nodeSize;
+		root = new Node(nodeSize, 0, null, null);
+		Entry<K, V> SENTINAL_ENTRY = new Entry<K, V> (SENTINAL_KEY, null, true);
+		add(SENTINAL_ENTRY);
+	}
+	
+	/**
+	 * search from the BTree the value corresponding to a key
+	 * @param key
+	 * @return
+	 */
+	protected ArrayList<V> search(K key)
+	{
+		return this.search(key, root);
+	}
+	
+	/**
+	 * recursively search for the corresponding value
+	 * @param key
+	 * @param node
+	 * @return
+	 */
+	protected ArrayList<V> search(K key, Node node)
+	{
+		if(node.getHeight() == 0)//if the node is external
+		{
+			for(int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				Entry<K, V> entryInQuestion = node.getNode()[i];
+				K keyInQuestion = entryInQuestion.getKey();
+				if(keyInQuestion.equals(key)){
+					return entryInQuestion.getListOfValues();
+				}
+			}
+			return new ArrayList<V>();
+		}
+		else //we need to do a recursive call to get to the proper external node
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				
+				if(((Comparable<K>) key).compareTo(keyInQuestion) < 0)
+				{
+					return this.search (key, (Node) node.getNode()[i - 1].getValue());
+				}
+				else if(i + 1 == node.getAmountOfEntries()) 
+				{
+					return this.search (key, (Node) node.getNode()[i].getValue());
+				}
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * add an entry
+	 * @param entry
+	 * @return
+	 */
+	protected Node add(Entry entry)
+	{
+		return this.add(entry, root);
+	}
+	
+	/**
+	 * add an entry given a key and value. create an Entry out of the two and add it to the Btree
+	 * @param key
+	 * @param value
+	 * @return
+	 */
+	protected Node add(K key, V value)
+	{
+		Entry entry;
+		//if its a null key, assign it the null Key value
+		if(key != null)
+		{
+			entry = new Entry(key, value, true);
+			
+		}
+		else
+		{
+			entry = new Entry(nullKey, value, true);
+		}
+		return this.add(entry, root);
+	}
+	
+	/**
+	 * recursively add the entry
+	 * @param entry
+	 * @param node
+	 * @return
+	 */
+	private Node add(Entry entry, Node node)
+	{
+		if (node.getHeight() == 0)//if we are at a leaf
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if(((Comparable<K>) entry.getKey()).compareTo(keyInQuestion) == 0)
+				{
+					V valToAdd = (V) entry.getListOfValues().get(0);
+					node.getNode()[i].addValue(valToAdd);
+					return null;
+				}
+				else if(((Comparable<K>) entry.getKey()).compareTo(keyInQuestion) < 0)//the key we're adding belongs at this place
+				{
+					//move the necesary peices over
+					for(int j = node.getAmountOfEntries() - 1; j > i - 1; j--)
+					{	
+						node.getNode()[j + 1] = node.getNode()[j];	
+					}
+					//add the entry and increment the node's entries field
+					node.getNode()[i] = entry;
+					node.incrementEntries();
+					//if the node is full, we need to split
+					if (node.getAmountOfEntries() == nodeSize)
+					{
+						return split(node);
+					}
+					else
+					{
+						return null;
+					}
+				}
+			}
+			node.incrementEntries();
+			node.getNode()[node.getAmountOfEntries() - 1] = entry;
+			if(node.getAmountOfEntries() == nodeSize)
+			{
+				return split(node);
+			}
+		}
+		else 
+		{
+			//find the correct key
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if (((Comparable<K>) entry.getKey()).compareTo(keyInQuestion) < 0)
+				{
+					Node nextNode = (Node) node.getNode()[i - 1].getValue();
+					return add(entry, nextNode);
+				}
+				else if(i == (node.getAmountOfEntries() - 1))
+				{
+					Node nextNode = (Node) node.getNode()[i].getValue();
+					return add(entry, nextNode);
+				}
+			}
+
+		}
+		return null;
+	}
+	
+	/**
+	 * If a node fills up fully, split it to two nodes
+	 * @param nodeToSplit
+	 * @return
+	 */
+	private Node split(Node nodeToSplit)
+	{
+
+		//make the new node
+		Node newNode = new Node(nodeSize, nodeToSplit.getHeight(), null, null);
+		//transfer the second half of the entries
+		for(int i = nodeSize/2; i < nodeSize; i++)
+		{
+			newNode.getNode()[i - nodeSize/2] = nodeToSplit.getNode()[i];
+			nodeToSplit.getNode()[i] = null;
+		}
+		//get the correct parent node or create a new one if need be
+		if(nodeToSplit.getParentNode() == null)//the node is the root itself
+		{
+			int newHeight = nodeToSplit.getHeight();
+			newHeight++;
+			//create the new root
+			Node  parentNode = new Node(nodeSize, newHeight, null, null);
+			//create new entries for the root
+			//if the root is the only node...
+			
+			Entry <K, Node> newEntryOne = new Entry<K, Node > ((K) nodeToSplit.getNode()[0].getKey(), nodeToSplit, false);
+			Entry <K, Node> newEntryTwo = new Entry<K, Node> ((K) newNode.getNode()[0].getKey(), newNode, false);
+			
+			parentNode.getNode()[0] = newEntryOne;
+			parentNode.getNode()[1] = newEntryTwo;
+			
+			nodeToSplit.setParentEntry(newEntryOne);
+			newNode.setParentEntry(newEntryTwo);
+			nodeToSplit.setParentNode(parentNode);
+			newNode.setParentNode(parentNode);
+			
+			//set amount of entries
+			nodeToSplit.setAmountOfEntires(3);
+			newNode.setAmountOfEntires(3);
+			parentNode.setAmountOfEntires(2);
+			//set up the correct node-parent heirarchy for the new node
+			if (nodeToSplit.getHeight() != 0)//if the new node isn't a leaf
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					Node newNodeChild = (Node) newNode.getNode()[i].getValue();
+					newNodeChild.setParentNode(newNode);
+				}
+			}
+			//if it is a leaf, we have to make sure the "sibling relationships exist
+			else
+			{
+				if(nodeToSplit.getRightSibling() == null)
+				{
+					nodeToSplit.setRightSibling(newNode);
+					newNode.setLeftSibling(nodeToSplit);
+				}
+				else
+				{
+					newNode.setRightSibling(nodeToSplit.getRightSibling());
+					newNode.setLeftSibling(nodeToSplit);
+					nodeToSplit.setRightSibling(newNode);
+				}
+			}
+			root = parentNode;
+			if(root.getAmountOfEntries() == nodeSize)
+			{
+				split(root);
+			}
+		}
+		else
+		{
+			Node parentNode = nodeToSplit.getParentNode();
+			//create the one new entry we need
+			Entry  newEntry = new Entry ((K) newNode.getNode()[0].getKey(), newNode, false);
+			//place it in the correct place
+			for(int i = 0; i < parentNode.getAmountOfEntries() + 1; i++)
+			{
+				if(i == parentNode.getAmountOfEntries() || ((Comparable<K>) newEntry.getKey()).compareTo((K) parentNode.getNode()[i].getKey()) < 0)
+				{
+					//move the necesary peices over
+					for(int j = parentNode.getAmountOfEntries() - 1; j > i - 1; j--)
+					{	
+						parentNode.getNode()[j + 1] = parentNode.getNode()[j];	
+					}
+					parentNode.getNode()[i] = newEntry;
+					parentNode.incrementEntries();
+					break;
+				}
+			}
+			//set amount of entries
+			nodeToSplit.setAmountOfEntires(3);
+			newNode.setAmountOfEntires(3);
+			newNode.setParentNode(parentNode);
+			//set up the correct node-parent heirarchy for the new node
+			if(nodeToSplit.getHeight() != 0)
+			{
+				for(int i = 0; i < 3; i++)
+				{
+					Node newNodeChild = (Node) newNode.getNode()[i].getValue();
+					newNodeChild.setParentNode(newNode);
+				}
+			}
+			else
+			{
+				if(nodeToSplit.getRightSibling() == null)
+				{
+					nodeToSplit.setRightSibling(newNode);
+					newNode.setLeftSibling(nodeToSplit);
+				}
+				else
+				{
+					(nodeToSplit.getRightSibling()).setLeftSibling(newNode);
+					newNode.setRightSibling(nodeToSplit.getRightSibling());
+					newNode.setLeftSibling(nodeToSplit);
+					nodeToSplit.setRightSibling(newNode);
+				}
+			}
+			if(parentNode.getAmountOfEntries() == nodeSize)
+			{
+				return split(parentNode);
+			}
+		}
+		return newNode;		
+	}
+	
+	/**
+	 * delete a value from the btree given a key and a value
+	 * @param key
+	 * @param value
+	 * @return
+	 */
+	protected V delete(K key, V value)
+	{
+		if(key == null)
+		{
+			key = nullKey;
+		}
+		return delete(key, value, root);
+	}
+	
+	/**
+	 * delete a value from the btree using recursion
+	 * @param key
+	 * @param value
+	 * @param node
+	 * @return
+	 */
+	private V delete(K key, V value, Node node)
+	{
+		if(node.getHeight() == 0)
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				Entry<K, V> entryInQuestion = node.getNode()[i];
+				K keyInQuestion = entryInQuestion.getKey();
+				if(keyInQuestion.compareTo(key) == 0)
+				{
+					for(V val : entryInQuestion.getListOfValues())
+					{
+						Iterator<V> it = entryInQuestion.getListOfValues().iterator();
+						while(it.hasNext())
+						{
+							V v = it.next();
+							if(v.equals(value))
+							{
+								it.remove();
+								return v;
+							}
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			for(int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				if(key.compareTo(keyInQuestion) < 0)
+				{
+					return delete (key, value, (Node) node.getNode()[i - 1].getValue());
+				}
+				else if(i + 1 == node.getAmountOfEntries())
+				{
+					return delete(key, value, (Node) node.getNode()[i].getValue());
+				}
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * find a node storing a given key
+	 * @param key
+	 * @return
+	 */
+	private Node findNode(K key)
+	{
+		return findNode(root, key);
+	}
+	
+	private Node findNode(Node node, K key)
+	{
+		if(node.getHeight() == 0)
+		{
+			return node;
+		}
+		else
+		{
+			for (int i = 0; i < node.getAmountOfEntries(); i++)
+			{
+				K keyInQuestion = (K) node.getNode()[i].getKey();
+				
+				if(((Comparable<K>) key).compareTo(keyInQuestion) < 0)
+				{
+					return findNode((Node) node.getNode()[i - 1].getValue(), key);
+				}
+				else if(i + 1 == node.getAmountOfEntries()) 
+				{
+					return findNode((Node) node.getNode()[i].getValue(), key);			
+				}
+			}
+		}
+		return null;
+	}
+	/**
+	 * get all values that correspond to keys greater than a given key
+	 * @param key
+	 * @return
+	 */
+	protected ArrayList<V> getGreaterThan(K key)
+	{
+		Node n = findNode(key);
+		ArrayList<V> returnArray = new ArrayList<V>();
+		for(int i = 0; i < n.getAmountOfEntries(); i++)
+		{
+			if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(key) > 0)
+			{
+
+				returnArray.addAll(n.getNode()[i].getListOfValues());
+			}
+		}
+		while(true)
+		{
+			n = n.getRightSibling();
+			if(n != null)
+			{
+				for(int i = 0; i < n.getAmountOfEntries(); i++)
+				{
+					returnArray.addAll(n.getNode()[i].getListOfValues());
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		return returnArray;
+	}
+	
+	/**
+	 * get all values that correspond to a key greater than or equal to a given key
+	 * @param key
+	 * @return
+	 */
+	protected ArrayList<V> getGreaterThanOrEqualTo(K key)
+	{
+		Node n = findNode(key);
+		ArrayList<V> returnArray = new ArrayList<V>();
+		for(int i = 0; i < n.getAmountOfEntries(); i++)
+		{
+			if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(key) >= 0)
+			{
+				
+				returnArray.addAll(n.getNode()[i].getListOfValues());
+			}
+		}
+		while(true)
+		{
+			n = n.getRightSibling();
+			if(n != null)
+			{
+				for(int i = 0; i < n.getAmountOfEntries(); i++)
+				{
+					returnArray.addAll(n.getNode()[i].getListOfValues());
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		return returnArray;
+	}
+	
+	/**
+	 * get all values that correspond to a key with less than a given key
+	 * @param key
+	 * @return
+	 */
+	protected ArrayList<V> getLessThan(K key)
+	{
+		Node n = findNode(key);
+		ArrayList<V> returnArray = new ArrayList<V>();
+		for(int i = n.getAmountOfEntries() - 1; i >= 0 ; i--)
+		{
+			if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(key) < 0)
+			{
+				if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(SENTINAL_KEY) == 0)
+				{
+					break;
+				}
+				returnArray.addAll(n.getNode()[i].getListOfValues());
+			}
+		}
+		while(true)
+		{
+			n = n.getLeftSibling();
+			if(n != null)
+			{
+				for(int i = n.getAmountOfEntries() - 1; i >= 0 ; i--)
+				{
+					if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(SENTINAL_KEY) == 0)
+					{
+						break;
+					}
+					returnArray.addAll(n.getNode()[i].getListOfValues());
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		return returnArray;
+	}
+	
+	/**
+	 * get all values that correspond to a key less than or equal to a given key
+	 * @param key
+	 * @return
+	 */
+	protected ArrayList<V> getLessThanOrEqual(K key)
+	{
+		Node n = findNode(key);
+		ArrayList<V> returnArray = new ArrayList<V>();
+		for(int i = n.getAmountOfEntries() - 1; i >= 0 ; i--)
+		{
+			if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(key) <= 0)
+			{
+				if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(SENTINAL_KEY) == 0)
+				{
+					break;
+				}
+				returnArray.addAll(n.getNode()[i].getListOfValues());
+			}
+		}
+		while(true)
+		{
+			n = n.getLeftSibling();
+			if(n != null)
+			{
+				for(int i = n.getAmountOfEntries() - 1; i >= 0 ; i--)
+				{
+					if(((Comparable<K>) n.getNode()[i].getKey()).compareTo(SENTINAL_KEY) == 0)
+					{
+						break;
+					}
+					returnArray.addAll(n.getNode()[i].getListOfValues());
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		return returnArray;
+	}
+	
+	/**
+	 * gets the Max Entry
+	 * @param n
+	 * @return
+	 */
+	private Entry getMaxEntry(Node n)
+	{
+		if(n.getHeight() == 0)
+		{
+			int i = n.getAmountOfEntries();
+			Entry e = n.getNode()[i - 1];
+			return e;
+		}
+		else
+		{
+			int i = n.getAmountOfEntries();
+			Entry e = n.getNode()[i - 1];
+			return getMaxEntry((Node)e.getValue());
+		}
+	}
+	
+	/**
+	 * gets all the contents of the BTree in Ascending order, except the SENTINAL
+	 * @return
+	 */
+	protected ArrayList<V> getAllAscending()
+	{
+		return getGreaterThan(SENTINAL_KEY);
+	}
+	
+	/**
+	 * gets all the contents of the BTree in descending order, except the SENTINAL
+	 * @return
+	 */
+	protected ArrayList<V> getAllDescending()
+	{
+		Entry e = getMaxEntry(root);
+		K maxKey = (K)e.getKey();
+		
+		return(getLessThanOrEqual(maxKey));
+	}
+	
+	/**
+	 * gets the maximum key
+	 * @param n
+	 * @return
+	 */
+	protected K getMaxKey(Node n)
+	{
+		return (K) getMaxEntry(n).getKey();
+	}
+	
+	/**
+	 * gets the minimum key, excluding the SENTIAL
+	 * @param n
+	 * @return
+	 */
+	protected K getMinKey(Node n)
+	{
+		if(n.getHeight() == 0)
+		{
+			for(int i = 0; i < n.getAmountOfEntries(); i++)
+			{
+				if(n.getNode()[i].getKey() != SENTINAL_KEY && n.getNode()[i].getKey() != nullKey)
+				{
+					return (K) n.getNode()[i].getKey();
+				}
+			}
+			return null;
+		}
+		else
+		{
+			return(getMinKey((Node) n.getNode()[0].getValue()));
+		}
+	}
+	
+	
+	
+	protected String getName()
+	{
+		return name;
+	}
+
+}

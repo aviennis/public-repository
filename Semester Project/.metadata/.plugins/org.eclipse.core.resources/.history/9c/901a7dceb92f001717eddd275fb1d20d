@@ -1,0 +1,9 @@
+
+public class ResultSet extends Table {
+
+	public ResultSet(int columns) {
+		super(columns);
+		
+	}
+
+}

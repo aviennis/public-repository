@@ -1,0 +1,93 @@
+
+import java.util.HashSet;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseManager {
+
+	HashSet<Table> tables = new HashSet<Table>();
+	
+	public ResultSet execute(String SQL) throws JSQLParserException
+	{
+		SQLParser parser = new SQLParser();
+		SQLQuery query = parser.parse(SQL);
+		
+		if (query instanceof SelectQuery)
+		{
+			SelectQuery q = (SelectQuery) query;
+			return select(q);
+		}
+		else if (query instanceof InsertQuery)
+		{
+			InsertQuery i = (InsertQuery) query;
+			return insert(i);
+		}
+		else if (query instanceof DeleteQuery)
+		{
+			DeleteQuery d = (DeleteQuery) query;
+			return delete(d);
+		}
+		else if (query instanceof CreateTableQuery)
+		{
+			CreateTableQuery ct = (CreateTableQuery) query;
+			return createTable(ct);
+		}
+		else if (query instanceof CreateIndexQuery)
+		{
+			CreateIndexQuery ci = (CreateIndexQuery) query;
+			return createIndex(ci);
+		}
+		else if (query instanceof UpdateQuery)
+		{
+			UpdateQuery u = (UpdateQuery) query;
+			return update(u);
+		}
+		else {
+			return null;
+		}
+	}
+	
+	private ResultSet select(SelectQuery sq)
+	{
+		return null;
+	}
+	
+	private ResultSet insert(InsertQuery iq)
+	{
+		return null;
+	}
+	
+	private ResultSet delete(DeleteQuery dq)
+	{
+		return null;
+	}
+	
+	private ResultSet createTable(CreateTableQuery ctq)
+	{
+		Table table = new Table(ctq.getColumnDescriptions().length, ctq.getTableName(), ctq.getColumnValuePairs(), ctq.getPrimaryKeyColumn());
+		tables.add(table);
+		
+		ResultSet rs = (ResultSet) table;
+		return rs;
+	}
+	
+	private ResultSet createIndex(CreateIndexQuery ciq)
+	{
+		String tableName = ciq.getTableName();
+		for(Table table : tables)
+		{
+			if (table.getName().equals(tableName))
+			{
+				String colName = ciq.getColumnName();
+				for()
+			}
+		}
+		return null;
+	}
+	
+	private ResultSet update(UpdateQuery uq)
+	{
+		return null;
+	}
+}

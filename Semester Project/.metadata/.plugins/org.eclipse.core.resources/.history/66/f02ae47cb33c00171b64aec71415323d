@@ -1,0 +1,12 @@
+import java.io.IOException;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+
+public class ResultSet extends Table {
+
+	public ResultSet (int size, String name, ColumnDescription[] colDescs, ColumnDescription pKey) throws IOException
+	{
+		super(size, name, colDescs, pKey);
+	}
+
+}

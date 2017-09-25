@@ -1,0 +1,104 @@
+import java.util.ArrayList;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		String SQL = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+				
+		ResultSet rs = dm.execute(SQL);
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String query = "CREATE INDEX SSNum_Index on YCStudent (SSNum);";
+		ResultSet rs2 = dm.execute(query);
+		//System.out.println(rs2.toString());
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String q = "INSERT INTO YCStudent (FirstName, LastName, CurrentStudent, BannerID, SSNum) VALUES ('Ploni','Almoni', false ,800012345, 12321123);";
+		String q1 = "INSERT INTO YCStudent (FirstName, LastName, CurrentStudent, BannerID, SSNum) VALUES ('Avi','Ennis', true, 800324355, 1232112);";
+		String q2 = "INSERT INTO YCStudent (LastName,FirstName,  BannerID,CurrentStudent, SSNum) VALUES ('joe', 'shmo', 800768768, false,  1232112);";
+		ResultSet rs3 = dm.execute(q);
+		ResultSet rs4 = dm.execute(q1);
+		ResultSet rs5 = dm.execute(q2);
+		for(Table t : dm.tables)
+		{
+			ArrayList<DBEntry> hi = t.getTableList();
+			for(DBEntry dbe : hi)
+			{
+				DBBox[] dbb = dbe.getEntry();
+				for(DBBox db : dbb)
+				{
+					System.out.println(db.getValue());
+				}
+				System.out.println("-----------");
+			}
+		}
+		for(Table t : dm.tables)
+		{
+			ArrayList<BTreeImplementation> hi = t.getTrees();
+			for(BTreeImplementation bti : hi)
+			{
+				Node n = bti.root;
+				Integer[] keys = new Integer[6];
+				keys[0] = (Integer) n.getNode()[0].getValue();
+				keys[1] = (Integer) n.getNode()[1].getValue();
+				keys[2] = (Integer) n.getNode()[2].getValue();
+			}
+		}
+		
+		
+		
+		//System.out.println(rs3.getTableList().get(0).getEntry()[0].getValue().toString());
+		
+	}
+	
+	private static void printColumnInfo(Table table)
+	{
+		System.out.println("Column Names:");
+		for(String s : table.getColumnList())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("names of indeces:");
+		for(String s : table.getNameOfIndex())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		System.out.println("not null:");
+		for(Boolean b : table.getNotNull())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("unique:");
+		for(Boolean b : table.getUnique())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		System.out.println("Primary Key:");
+		for(Boolean b : table.getPrimaryKey())
+		{
+			System.out.println(b.toString());
+		}
+	}
+	
+}

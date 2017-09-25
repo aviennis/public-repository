@@ -1,0 +1,25 @@
+import java.util.ArrayList;
+import java.util.HashSet;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnValuePair;
+
+public class Table {
+	
+	private String name;
+	private ArrayList<DBEntry> rows;
+	private int amountOfColumns;
+	
+	public Table(int columns, String name)
+	{
+		rows = new ArrayList<DBEntry>();
+		amountOfColumns = columns;
+		this.name = name;
+	}
+	
+	private String getName()
+	{
+		return name;
+	}
+
+	
+}

@@ -1,0 +1,69 @@
+public class Node <K , V> {
+	
+	private Entry<K, V>[] node;
+	private int height;
+	private Entry<K, Node<K, V>> parentEntry;
+	private Node<K, Node<K, V>> parentNode;
+	private int entries;
+
+	
+	public Node(int size, int height, Entry<K, Node<K, V>> parentEntry, Node<K, Node<K , V>> parentNode)
+	{
+		node = new Entry[size];
+		this.height = height;
+		this.parentEntry = parentEntry;
+		this.parentNode = parentNode;
+		entries = 0;
+	}
+	
+	
+	
+	public int getHeight()
+	{
+		return height;
+	}
+	
+	public Entry<K, V>[] getNode()
+	{
+		return node;
+	}
+	
+	public Entry<K, Node<K, V>> getParentEntry()
+	{
+		return parentEntry;
+	}
+	
+	public void setParentEntry(Entry<K, Node<K , V>> parentEntryToBe)
+	{
+		parentEntry = parentEntryToBe;
+	}
+	
+	public void incrementHeight()
+	{
+		height++;
+	}
+	
+	public Node<K, Node<K, V>> getParentNode()
+	{
+		return parentNode;
+	}
+	
+	public void setParentNode(Node<K, Node<K, V>> parentNodeToBe)
+	{
+		parentNode = parentNodeToBe;
+	}
+	
+	public void incrementEntries()
+	{
+		entries++;
+	}
+	
+	public int getAmountOfEntries()
+	{
+		return entries;
+	}
+	public void setAmountOfEntires(int num)
+	{
+		entries = num;
+	}
+}

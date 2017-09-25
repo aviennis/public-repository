@@ -1,0 +1,93 @@
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException, IOException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		
+		String SQL = "CREATE TABLE ordertest"
+				+ "("
+				+ " one int,"
+				+ " two int,"
+				+ " three int,"
+				+ " name varchar(200),"
+				+ " PRIMARY KEY (name)"
+				+ ");";
+		ResultSet rs = dm.execute(SQL);
+		
+		String a = "INSERT INTO ordertest (one, two, three, name) VALUES(1, 1, 1, 'a');";
+		String b = "INSERT INTO ordertest (one, two, three, name) VALUES(1, 1, 2, 'b');";
+		String c = "INSERT INTO ordertest (one, two, three, name) VALUES(1, 1, 3, 'c');";
+		String d = "INSERT INTO ordertest (one, two, three, name) VALUES(1, 2, 1, 'd');";
+		String e = "INSERT INTO ordertest (one, two, three, name) VALUES(1, 2, 2, 'e');";
+		String f = "INSERT INTO ordertest (one, two, three, name) VALUES(2, 1, 3, 'f');";
+		String g = "INSERT INTO ordertest (one, two, three, name) VALUES(2, 1, 2, 'g');";
+		String h = "INSERT INTO ordertest (one, two, three, name) VALUES(2, 2, 1, 'h');";
+		
+		ResultSet rsa = dm.execute(a);
+		ResultSet rsb = dm.execute(b);
+		ResultSet rsc = dm.execute(c);
+		ResultSet rsd = dm.execute(d);
+		ResultSet rse = dm.execute(e);
+		ResultSet rsf = dm.execute(f);
+		ResultSet rsg = dm.execute(g);
+		ResultSet rsh = dm.execute(h);
+
+		
+		String select = "SELECT name FROM ordertest ORDER BY one DESC, two DESC, three ASC;";
+		ResultSet rss = dm.execute(select);
+		
+		ArrayList<DBEntry> list = rss.getTableList();
+		for(DBEntry dbe : list)
+		{
+			DBBox[] dbb = dbe.getEntry();
+			for(DBBox box : dbb)
+			{
+				System.out.println(box.getValue().toString());
+			}
+			
+		}
+		
+		
+	}
+	
+		private static void printColumnInfo(Table table)
+		{
+			System.out.println("Column Names:");
+			for(String s : table.getColumnList())
+			{
+				System.out.println(s);
+			}
+			System.out.println("---------------------");
+			System.out.println("names of indeces:");
+			for(String s : table.getNameOfIndex())
+			{
+				System.out.println(s);
+			}
+			System.out.println("---------------------");
+			System.out.println("not null:");
+			for(Boolean b : table.getNotNull())
+			{
+				System.out.println(b.toString());
+			}
+			System.out.println("---------------------");
+			System.out.println("unique:");
+			for(Boolean b : table.getUnique())
+			{
+			System.out.println(b.toString());
+			}
+			System.out.println("---------------------");
+			System.out.println("Primary Key:");
+			for(Boolean b : table.getPrimaryKey())
+			{
+				System.out.println(b.toString());
+			}
+		}
+}	
+	

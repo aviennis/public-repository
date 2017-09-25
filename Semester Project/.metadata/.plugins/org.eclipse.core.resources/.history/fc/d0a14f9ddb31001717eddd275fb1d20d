@@ -1,0 +1,46 @@
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		String SQL = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+				
+		ResultSet rs = dm.execute(SQL);
+		for(String s : rs.getColumnList())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		for(String s : rs.getNameOfIndex())
+		{
+			System.out.println(s);
+		}
+		System.out.println("---------------------");
+		for(Boolean b : rs.getNotNull())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		for(Boolean b : rs.getUnique())
+		{
+			System.out.println(b.toString());
+		}
+		System.out.println("---------------------");
+		for(Boolean b : rs.getPrimaryKey())
+		{
+			System.out.println(b.toString());
+		}
+	}
+	
+}

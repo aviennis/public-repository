@@ -1,0 +1,454 @@
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.ColumnDescription.DataType;
+
+
+public class Table {
+	
+	private String name;
+	private ArrayList<DBEntry> rows;
+	private int amountOfColumns;
+	private DataType[] types;
+	private Object[] defaultValue;
+	private boolean[] isUnique;
+	private boolean[] notNull;
+	private String[] columnNames;
+	private boolean[] primaryKey;
+	private boolean[] isIndex;
+	private ArrayList<BTreeImplementation> BTrees;
+	private String[] nameOfIndex;
+	
+	public Table(int columns, String name, ColumnDescription[] colDescriptions, ColumnDescription primary)
+	{
+		rows = new ArrayList<DBEntry>();
+		amountOfColumns = columns;
+		this.name = name;
+		
+		types = new DataType[amountOfColumns];
+		defaultValue = new Object[amountOfColumns];
+		isUnique = new boolean[amountOfColumns];
+		notNull = new boolean[amountOfColumns];
+		columnNames = new String[amountOfColumns];
+		primaryKey = new boolean[amountOfColumns];
+		isIndex = new boolean[amountOfColumns];
+		BTrees = new ArrayList<BTreeImplementation>();
+		nameOfIndex = new String[amountOfColumns];
+		
+		//fill our arrays with correct information about the table
+		if(colDescriptions != null)
+		{
+			for (int i = 0; i < colDescriptions.length; i++)
+			{
+				ColumnDescription cd = colDescriptions[i];
+				//store the types in an array
+				types[i] = cd.getColumnType();
+				//set the default values and store in an array
+				if(cd.getHasDefault())
+				{
+					defaultValue[i] = stringToType(types[i], cd.getDefaultValue());
+				}
+				//store which values are unique
+				if(cd.isUnique())
+				{
+					isUnique[i] = true;
+				}
+				//store which values are not null
+				if(cd.isNotNull())
+				{
+					notNull[i] = true;
+				}
+				//store the column names
+				columnNames[i] = cd.getColumnName();
+				//store the primary column (primary column, make it an index, create the Btree)
+				if(columnNames[i].equals(primary.getColumnName()))
+				{
+					primaryKey[i] = true;
+					isIndex[i] = true;
+					isUnique[i] = true;
+					notNull[i] = true;
+					nameOfIndex[i] = columnNames[i] + "_INDEX";
+				
+					BTreeImplementation bte = createBTree(i, primary.getColumnName());	
+					BTrees.add(bte);
+				}
+			}
+		}
+	}		
+	
+	/**
+	 * 
+	 * @param colValPairs
+	 */
+	public boolean addRow(ColumnValuePair[] colValPairs)
+	{
+		//fill in the values for the entry
+		DBEntry entry = new DBEntry(this.getSize());
+		//iterate through entry and give values
+		for(int i = 0; i < entry.getSize(); i++)
+		{
+			boolean entered = false;
+			for(int j = 0; j < colValPairs.length; j++)
+			{
+				ColumnValuePair cvp = colValPairs[j];
+				//if the column matches the column in question...
+				String cn = columnNames[i];
+				String o = cvp.getColumnID().getColumnName();
+				if(cvp.getColumnID().getColumnName().equals(columnNames[i]))
+				{
+					//add it to the entry
+					if(!isUnique[i] || isUniqueValue(cvp, i))
+					{	
+						DBBox<Object> b = new DBBox<Object>(stringToType(types[i], cvp.getValue()));
+						entry.getEntry()[i] = b;
+						entered = true;
+						break;
+					}
+					//if there needs to be a unique value, but the value offered isn't unique...
+					else { return false;}
+				}
+			}
+			//if there are no matches, the value was not given
+			//if there is a default value to give...
+			if(!entered)
+			{
+				if(defaultValue[i] != null)
+				{
+					DBBox<Object> b = new DBBox<Object>(defaultValue[i]);
+					entry.getEntry()[i] = b;
+				}
+				//if there is no default value...
+				//if this column is not allowed to be null, but there is no given value...
+				else if(notNull[i])
+				{
+					return false;
+				}
+				//if it can be null, set the value to null
+				else
+				{
+					entry.getEntry()[i] = null;
+				}
+			}
+			//if its an index, add to btree
+			if (isIndex[i])
+			{
+				for(BTreeImplementation bte: BTrees)
+				{
+					if(bte.getName().equals(columnNames[i]))
+					{
+						addToBTree(bte, i, entry);
+						break;
+					}
+				}
+			}
+		}
+		//add the entry to the Table
+		rows.add(entry);
+		return true;
+	}
+	
+	public boolean createIndex(CreateIndexQuery ciq)
+	{
+		String colName = ciq.getColumnName();
+		for(int i = 0; i < amountOfColumns; i++)
+		{
+			if(columnNames[i].equals(colName))
+			{
+				isIndex[i] = true;
+				nameOfIndex[i] = columnNames[i] + "_INDEX";
+				BTreeImplementation bt = createBTree(i, columnNames[i]);
+				for(DBEntry entry : rows)
+				{
+					addToBTree(bt, i, entry);	
+				}
+				BTrees.add(bt);
+				return true;
+			}
+		}
+		return false;	
+	}
+	
+	public boolean deleteRow(DeleteQuery dq)
+	{
+		Condition condition = dq.getWhereCondition();
+		
+		if(condition.getLeftOperand() instanceof Condition)
+		{
+			removeCompoundCondition(condition);
+		}
+		//if not, this is not a compound condition, and the left Operand must be a columnID
+		else
+		{
+			String colName = ((ColumnID)condition.getLeftOperand()).getColumnName();
+			for(int i = 0; i < amountOfColumns; i++)
+			{
+				if(colName.equals(columnNames[i]))
+				{
+					if(isIndex[i])
+					{
+						return removeRowViaBTree(condition, i);
+					}
+					else
+					{
+						return removeRowViaList(condition, i);
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	private boolean removeRowViaBTree(Condition c, int index)
+	{
+		return false;
+	}
+	
+	private boolean removeRowViaList(Condition c, int index)
+	{
+		boolean result = false;
+		switch(c.getOperator())
+		{
+			case EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if (dbe.getEntry()[index].getValue().equals(stringToType(types[index], (String) c.getRightOperand())))
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}
+			case NOT_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(!(dbe.getEntry()[index].getValue().equals(stringToType(types[index], (String) c.getRightOperand()))))
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}
+			case LESS_THAN:
+				for(DBEntry dbe : rows)
+				{
+					if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) c.getRightOperand())) < 0)
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}
+			case lESS_THAN_OR_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if (((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) c.getRightOperand())) <= 0)
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}
+			case GREATER_THAN:
+				for(DBEntry dbe : rows)
+				{
+					if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) c.getRightOperand())) > 0)
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}
+			case GREATER_THAN_OR_EQUALS:
+				for(DBEntry dbe : rows)
+				{
+					if(((Comparable<Object>)dbe.getEntry()[index].getValue()).compareTo(stringToType(types[index], (String) c.getRightOperand())) >= 0)
+					{
+						rows.remove(dbe);
+						result = true;
+						if(isUnique[index])
+						{
+							break;
+						}
+					}
+				}			
+		}
+		return result;
+	}
+	
+	private boolean removeCompoundCondition(Condition c)
+	{
+		return false;
+	}
+	
+	
+	public boolean updateQuery(UpdateQuery uq)
+	{
+		HashSet<ColumnValuePair> cvp = new HashSet<ColumnValuePair>();
+		
+		
+		
+		
+		return true;
+	}
+	
+	private BTreeImplementation createBTree(int index, String columnName)
+	{
+		if(types[index].toString().equals("INT"))
+		{
+			BTreeImplementation<Integer, DBEntry> bte = new BTreeImplementation<Integer, DBEntry>(6, columnName,Integer.MIN_VALUE, Integer.MIN_VALUE + 1);
+			return bte;
+		}
+		else if (types[index].toString().equals("VARCHAR"))
+		{
+			BTreeImplementation<String, DBEntry> bte = new BTreeImplementation<String, DBEntry>(6, columnName, " ", "  ");
+			return bte;
+		}
+		else if (types[index].toString().equals("BOOLEAN"))
+		{
+			BTreeImplementation<Boolean, DBEntry> bte = new BTreeImplementation<Boolean, DBEntry>(6, columnName, false, null);
+			return bte;
+		}
+		else {
+			BTreeImplementation<Double, DBEntry> bte = new BTreeImplementation<Double, DBEntry>(6, columnName, Double.MIN_VALUE, Double.MIN_VALUE + 1);
+			return bte;
+		}
+	}
+	
+	
+	private void addToBTree(BTreeImplementation tree, int index, DBEntry entry)
+	{
+		if(types[index].toString().equals("INT"))
+		{
+			//Entry<Integer, DBEntry> e = new Entry<Integer, DBEntry>((Integer) entry.getEntry()[index].getValue(), entry);
+			if(entry.getEntry()[index] != null){
+				tree.add((Integer)entry.getEntry()[index].getValue(), entry);
+			}
+			else
+			{
+				tree.add(null, entry);
+			}
+		}
+		else if (types[index].toString().equals("VARCHAR"))
+		{
+			Entry<String, DBEntry> e = new Entry<String, DBEntry> ((String) entry.getEntry()[index].getValue(), entry);
+			tree.add(e);
+		}
+		else if (types[index].toString().equals("BOOLEAN"))
+		{
+			Entry<Boolean, DBEntry> e = new Entry<Boolean, DBEntry> ((Boolean) entry.getEntry()[index].getValue(), entry);
+			tree.add(e);
+		}
+		else {
+			Entry<Double, DBEntry> e = new Entry<Double, DBEntry> ((Double) entry.getEntry()[index].getValue(), entry);
+			tree.add(e);
+		}
+	}
+	
+	/**
+	 * 
+	 * @param colValPair
+	 * @param valueInQuestion
+	 * @return
+	 */
+	private boolean isUniqueValue(ColumnValuePair colValPair, int valueInQuestion)
+	{
+		for(DBEntry dbe : rows)
+		{
+			if((dbe.getEntry()[valueInQuestion].getValue()).equals(stringToType(types[valueInQuestion], colValPair.getValue())))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * convert the value in string form to the correct data type
+	 * @param type
+	 * @param value
+	 * @return
+	 */
+	private Object stringToType(DataType type, String value)
+	{
+		switch(type)
+		{
+			case INT:
+				return Integer.parseInt(value);	
+			case BOOLEAN:
+				if(value.equals("true"))
+				{
+					return true;
+				} else {return false;}
+			case VARCHAR:
+				return value.substring(1,value.length() - 1);
+			case DECIMAL:
+				return Double.parseDouble(value);
+			default:
+				return null;
+		}
+	}
+
+
+	public String getName()
+	{
+		return name;
+	}
+
+	public int getSize()
+	{
+		return amountOfColumns;
+	}
+	
+	public ArrayList<DBEntry> getTableList()
+	{
+		return rows;
+	}
+	public String[] getColumnList()
+	{
+		return columnNames;
+	}
+	public String[] getNameOfIndex()
+	{
+		return nameOfIndex;
+	}
+	public boolean[] getUnique()
+	{
+		return isUnique;
+	}
+	public boolean[] getIndex()
+	{
+		return isIndex;
+	}
+	public boolean[] getNotNull()
+	{
+		return notNull;
+	}
+	public boolean[] getPrimaryKey()
+	{
+		return primaryKey;
+	}
+	public ArrayList<BTreeImplementation> getTrees()
+	{
+		return BTrees;
+	}
+	
+	
+}

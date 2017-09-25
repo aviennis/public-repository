@@ -1,0 +1,191 @@
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseTester {
+	
+	public static void main(String[] args) throws JSQLParserException, IOException
+	{
+		DatabaseManager dm = new DatabaseManager();
+		
+		String SQL = "CREATE TABLE YCStudent"
+				+ "("
+				+ " BannerID int,"
+				+ " SSNum int UNIQUE,"
+				+ " FirstName varchar(255),"
+				+ " GPA decimal(1, 2) DEFAULT 0.00,"
+				+ " LastName varchar(255) NOT NULL,"
+				+ " CurrentStudent boolean DEFAULT true,"
+				+ " PRIMARY KEY (BannerID)"
+				+ ");";
+		
+		ResultSet rs = dm.execute(SQL);
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String query = "CREATE INDEX SSNum_Index on YCStudent (SSNum);";
+		ResultSet rs2 = dm.execute(query);
+
+		//System.out.println(rs2.toString());
+		for(Table t : dm.tables)
+		{
+			//printColumnInfo(t);
+		}
+		String q = "INSERT INTO YCStudent (FirstName, LastName, BannerID) VALUES ('Ploni','Almoni' ,800012345);";
+		String q1 = "INSERT INTO YCStudent (FirstName, LastName, CurrentStudent, BannerID, SSNum, GPA) VALUES ('Ploni','Ennis', true, 800324355, 12345678, 4.00);";
+		String q2 = "INSERT INTO YCStudent (FirstName, LastName, BannerID, CurrentStudent, SSNum, GPA) VALUES ('joe', 'shmo', 800768768, false,  1234678, 3.90);";
+		ResultSet rs3 = dm.execute(q);
+		//System.out.println(rs3.getTableList().get(0).getEntry()[1].getValue());
+		ResultSet rs4 = dm.execute(q1);
+		//System.out.println(rs4.getTableList().get(0).getEntry()[1].getValue());
+		ResultSet rs5 = dm.execute(q2);
+		//System.out.println(rs5.getTableList().get(0).getEntry()[1].getValue());
+		//System.out.println(rs3.getTableList().get(0).getEntry()[0].getValue());
+		//System.out.println(rs4.getTableList().get(0).getEntry()[0].getValue());
+		//System.out.println(rs5.getTableList().get(0).getEntry()[0].getValue());
+		
+		String delete1 = "DELETE FROM YCStudent";
+		//dm.execute(delete1);
+		//dm.execute(delete1);
+		
+		String update1 = "UPDATE YCStudent SET FirstName='Avery', SSNum=1234678 WHERE BannerID=800324355;";
+		//ResultSet rs6 = dm.execute(update1);
+		
+		String basicSelect = "SELECT DISTINCT FirstName FROM YCStudent;";
+		ResultSet selectSet1 = dm.execute(basicSelect);
+		System.out.println("-----------------------------------------------------");
+		for(DBEntry dbe : selectSet1.getTableList())
+		{
+			DBBox[] dbb = dbe.getEntry();
+			for(DBBox db : dbb)
+			{
+				if(db.getValue() == null)
+				{
+					System.out.println("null");
+				}
+				else {
+					System.out.println(db.getValue());
+				}
+			}
+			System.out.println("=========");
+		}
+		System.out.println("-----------------------------------------------------");
+		
+		
+		
+		//System.out.println(rs6.getTableList().get(0).getEntry()[0].getValue());
+		
+		for(Table t : dm.tables)
+		{
+			ArrayList<DBEntry> hi = t.getTableList();
+			for(DBEntry dbe : hi)
+			{
+				DBBox[] dbb = dbe.getEntry();
+				for(DBBox db : dbb)
+				{
+					if(db.getValue() == null)
+					{
+						System.out.println("null");
+					}
+					else {
+						System.out.println(db.getValue());
+					}
+				}
+				System.out.println("-----------");
+			}
+		}
+		
+		for(Table t : dm.tables)
+		{
+			for(BTreeImplementation bti : t.getTrees())
+			{
+				Node n = bti.root;
+				Entry[] e = n.getNode();
+				Entry e1 = e[0];
+				Entry e2 = e[1];
+				Entry e3 = e[2];
+				Entry e4 = e[3];
+				
+				Integer i1 = (Integer) e1.getKey();
+				Integer i2 = (Integer) e2.getKey();
+				Integer i3 = (Integer) e3.getKey();
+				Integer i4 = (Integer) e4.getKey();
+				
+				ArrayList<DBEntry> a1 = e1.getListOfValues();
+				ArrayList<DBEntry> a2 = e2.getListOfValues();
+				ArrayList<DBEntry> a3 = e3.getListOfValues();
+				ArrayList<DBEntry> a4 = e4.getListOfValues();
+				
+				System.out.println(i1);
+				System.out.println(i2);
+				System.out.println(i3);
+				System.out.println(i4);
+			
+				
+				for(int i = 0; i < 1; i++)
+				{
+					if(!a1.isEmpty())
+					{
+						System.out.println(a1.get(0));
+					}
+					if(!a2.isEmpty())
+					{
+						System.out.println(((DBEntry)a2.get(0)).getEntry()[1].getValue().toString());
+					}
+					if(!a3.isEmpty())
+					{
+						System.out.println(((DBEntry)a3.get(0)).getEntry()[1].getValue().toString());
+					}
+					if(!a4.isEmpty())
+					{
+						System.out.println(((DBEntry)a4.get(0)).getEntry()[1].getValue().toString());
+					}
+				}
+				
+			}
+			
+		}
+		
+		
+		
+		//System.out.println(rs3.getTableList().get(0).getEntry()[0].getValue().toString());
+		
+		}
+	
+		private static void printColumnInfo(Table table)
+		{
+			System.out.println("Column Names:");
+			for(String s : table.getColumnList())
+			{
+				System.out.println(s);
+			}
+			System.out.println("---------------------");
+			System.out.println("names of indeces:");
+			for(String s : table.getNameOfIndex())
+			{
+				System.out.println(s);
+			}
+			System.out.println("---------------------");
+			System.out.println("not null:");
+			for(Boolean b : table.getNotNull())
+			{
+				System.out.println(b.toString());
+			}
+			System.out.println("---------------------");
+			System.out.println("unique:");
+			for(Boolean b : table.getUnique())
+			{
+			System.out.println(b.toString());
+			}
+			System.out.println("---------------------");
+			System.out.println("Primary Key:");
+			for(Boolean b : table.getPrimaryKey())
+			{
+				System.out.println(b.toString());
+			}
+		}
+}	
+	

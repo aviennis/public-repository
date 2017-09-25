@@ -1,0 +1,139 @@
+
+import java.util.HashSet;
+
+import edu.yu.cs.dataStructures.fall2016.SimpleSQLParser.*;
+import net.sf.jsqlparser.JSQLParserException;
+
+public class DatabaseManager {
+
+	HashSet<Table> tables = new HashSet<Table>();
+	
+	public ResultSet execute(String SQL) throws JSQLParserException
+	{
+		SQLParser parser = new SQLParser();
+		SQLQuery query = parser.parse(SQL);
+		
+		if (query instanceof SelectQuery)
+		{
+			SelectQuery q = (SelectQuery) query;
+			return select(q);
+		}
+		else if (query instanceof InsertQuery)
+		{
+			InsertQuery i = (InsertQuery) query;
+			return insert(i);
+		}
+		else if (query instanceof DeleteQuery)
+		{
+			DeleteQuery d = (DeleteQuery) query;
+			return delete(d);
+		}
+		else if (query instanceof CreateTableQuery)
+		{
+			CreateTableQuery ct = (CreateTableQuery) query;
+			return createTable(ct);
+		}
+		else if (query instanceof CreateIndexQuery)
+		{
+			CreateIndexQuery ci = (CreateIndexQuery) query;
+			return createIndex(ci);
+		}
+		else if (query instanceof UpdateQuery)
+		{
+			UpdateQuery u = (UpdateQuery) query;
+			return update(u);
+		}
+		else {
+			return null;
+		}
+	}
+	
+	private ResultSet select(SelectQuery sq)
+	{
+	
+		return null;
+	}
+	
+	/**
+	 * 
+	 * @param iq
+	 * @return
+	 */
+	private ResultSet insert(InsertQuery iq)
+	{
+		String tableName = iq.getTableName();
+		for(Table table: tables)
+		{
+			if (tableName.equals(table.getName()))
+			{
+					return generateSingleBoxResultSet(table.addRow(iq.getColumnValuePairs()));
+			}
+		}
+		return generateSingleBoxResultSet(false);
+	}
+	
+	private ResultSet delete(DeleteQuery dq)
+	{
+		return null;
+	}
+	
+	/**
+	 * 
+	 * @param ctq
+	 * @return
+	 */
+	private ResultSet createTable(CreateTableQuery ctq)
+	{
+		Table table = new Table(ctq.getColumnDescriptions().length, ctq.getTableName(), ctq.getColumnDescriptions(), ctq.getPrimaryKeyColumn());
+		tables.add(table);
+		
+		ResultSet rs = (ResultSet) table;
+		return rs;
+	}
+	
+	/**
+	 * 
+	 * @param ciq
+	 * @return
+	 */
+	private ResultSet createIndex(CreateIndexQuery ciq)
+	{
+		String tableName = ciq.getTableName();
+		for(Table table : tables)
+		{
+			if (table.getName().equals(tableName))
+			{
+				return generateSingleBoxResultSet(table.createIndex(ciq));
+			}
+		}
+		return generateSingleBoxResultSet(false);
+	}
+	
+	private ResultSet update(UpdateQuery uq)
+	{
+		String tableName = uq.getTableName();
+		for(Table table : tables)
+		{
+			if(table.getName().equals(tableName))
+			{
+				return generateSingleBoxResultSet(table.updateQuery(uq));
+			}
+		}
+		return generateSingleBoxResultSet(false);
+	}
+	
+	/**
+	 * 
+	 * @param b
+	 * @return
+	 */
+	private ResultSet generateSingleBoxResultSet(boolean b)
+	{
+		ResultSet rs = new ResultSet(1, "rs", null, null);
+		DBBox<Object> newBox = new DBBox<Object>(b);
+		DBEntry e = new DBEntry(1);
+		e.getEntry()[0] = newBox;
+		rs.getTableList().add(e);
+		return rs;
+	}
+}

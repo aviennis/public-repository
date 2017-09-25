@@ -1,0 +1,12 @@
+
+public class DBBox <T> {
+	
+	private T t;
+	
+	public DBBox(T t)
+	{
+		this.t = t;
+	}
+	
+	
+}
